@@ -4,19 +4,20 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV ZEPHYR_BASE=/opt/zephyrproject/zephyr
 ENV ZEPHYR_SDK_INSTALL_DIR=/opt/zephyr-sdk
 
-RUN apt-get update && apt-get install -y \
-    git \
-    wget \
-    curl \
-    cmake \
-    ninja-build \
-    gperf \
-    ccache \
-    dfu-util \
-    device-tree-compiler \
-    xz-utils \
-    file \
-    make \
+RUN apt-get update \
+    && apt-get install -y \
+        git \
+        wget \
+        curl \
+        cmake \
+        ninja-build \
+        gperf \
+        ccache \
+        dfu-util \
+        device-tree-compiler \
+        xz-utils \
+        file \
+        make \
     && rm -rf /var/lib/apt/lists/*
 
 # UV and python
@@ -46,7 +47,8 @@ RUN west init /opt/zephyrproject \
 
 # Install Zephyr SDK
 RUN cd /opt/zephyrproject/zephyr \
-    && west sdk install --install-dir "$ZEPHYR_SDK_INSTALL_DIR" \
+    && west sdk install \
+        --install-dir "$ZEPHYR_SDK_INSTALL_DIR" \
         --gnu-toolchains arm-zephyr-eabi
 
 WORKDIR /workspace
