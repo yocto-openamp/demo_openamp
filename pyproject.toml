@@ -1,0 +1,95 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[project]
+name = "demo_openamp"
+version = "0.1.0"
+description = "Several demos for the Toradex Verdin Board."
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0",
+    "nicegui>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "mypy",
+    "ruff",
+]
+
+[tool.pdm]
+version = "0.0.1"
+distribution = true
+
+[tool.pdm.build]
+package-dir = "coreA53/src"
+includes = [
+    "coreA53/src/",
+]
+source-includes = [
+    "LICENSE",
+    "README.md"
+]
+
+[tool.ruff]
+target-version = "py313"
+# All paths are relative to the project root, which is the directory containing the pyproject.toml.
+src = ["src", "tests", "measurement_actual"]
+exclude = [
+    "src/itooth_gui/resources_compiled/*.py"
+]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    # "I",  # isort
+    "I001", # isort
+    "B",  # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    # "W191",  # indentation contains tabs
+    "D",     # enable docstring checks
+    "B027",  #  empty method in an abstract base class
+]
+
+[tool.ruff.lint.per-file-ignores]
+"pymeas2019_noise/__init__.py" = ["F401", "I001"]
+
+[tool.ruff.lint.isort]
+# known-third-party = ["usbhubctl"]
+# known-local-folder = ["usbhubctl"]
+case-sensitive = true
+combine-as-imports = true
+order-by-type = false
+section-order = [
+  "future",
+  "standard-library",
+  "third-party",
+  "first-party",
+  "local-folder",
+]
+
+[tool.mypy]
+# strict = true
+# enable_incomplete_feature = ["NewGenericSyntax"]
+
+[[tool.mypy.overrides]]
+module = "scipy.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "ad_low_noise_float_2023_decoder.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["coreA53/src"]
