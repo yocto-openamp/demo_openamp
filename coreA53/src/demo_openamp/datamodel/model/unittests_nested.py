@@ -1,15 +1,16 @@
 import pydantic
-from utils.util_pydantic import SchemaExtra
+
+from demo_openamp.datamodel.utils.util_pydantic import SchemaExtra
 
 from . import unittests_simple
 
 
 class ModelSystemDual(pydantic.BaseModel):
     axis_x: unittests_simple.ModelPidController = pydantic.Field(
-        default_factory=lambda :unittests_simple.ModelPidController(name="Axis X"),
+        default_factory=lambda: unittests_simple.ModelPidController(name="Axis X"),
     )
     axis_y: unittests_simple.ModelPidController = pydantic.Field(
-        default_factory=lambda :unittests_simple.ModelPidController(name="Axis Y"),
+        default_factory=lambda: unittests_simple.ModelPidController(name="Axis Y"),
     )
     debuglevel: int = pydantic.Field(
         default=4095,
@@ -21,12 +22,14 @@ class ModelSystemDual(pydantic.BaseModel):
         ).dict,
     )
 
+
 class ModelSystemList(pydantic.BaseModel):
     controllers: list[unittests_simple.ModelPidController] = pydantic.Field(
         min_length=2,
         max_length=2,
         default_factory=lambda: [
-            unittests_simple.ModelPidController(name=name) for name in ["Axis R", "Axis S"]
+            unittests_simple.ModelPidController(name=name)
+            for name in ["Axis R", "Axis S"]
         ],
     )
     debuglevel: int = pydantic.Field(
@@ -39,12 +42,13 @@ class ModelSystemList(pydantic.BaseModel):
         ).dict,
     )
 
+
 class ModelSystemDualList(pydantic.BaseModel):
     axis_x: unittests_simple.ModelPidController = pydantic.Field(
-        default_factory=lambda :unittests_simple.ModelPidController(name="Axis X"),
+        default_factory=lambda: unittests_simple.ModelPidController(name="Axis X"),
     )
     axis_y: unittests_simple.ModelPidController = pydantic.Field(
-        default_factory=lambda :unittests_simple.ModelPidController(name="Axis Y"),
+        default_factory=lambda: unittests_simple.ModelPidController(name="Axis Y"),
     )
     debuglevel: int = pydantic.Field(
         default=4095,
@@ -59,6 +63,7 @@ class ModelSystemDualList(pydantic.BaseModel):
         min_length=2,
         max_length=2,
         default_factory=lambda: [
-            unittests_simple.ModelPidController(name=name) for name in ["Axis R", "Axis S"]
+            unittests_simple.ModelPidController(name=name)
+            for name in ["Axis R", "Axis S"]
         ],
     )

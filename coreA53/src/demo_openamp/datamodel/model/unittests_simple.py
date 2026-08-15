@@ -1,5 +1,6 @@
 import pydantic
-from utils.util_pydantic import SchemaExtra
+
+from demo_openamp.datamodel.utils.util_pydantic import SchemaExtra
 
 
 class ModelPidController(pydantic.BaseModel):

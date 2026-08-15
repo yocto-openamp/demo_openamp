@@ -1,7 +1,9 @@
 import pathlib
 import re
+import shutil
 import subprocess
 
+import pytest
 from demo_openamp.datamodel.model import unittests_simple
 from demo_openamp.datamodel.renderer import renderer_c
 
@@ -10,6 +12,10 @@ DIRECTORY_SRC_C = DIRECTORY_OF_THIS_FILE / "src_c"
 
 
 def test_src_c() -> None:
+    gcc = shutil.which("gcc")
+    if gcc is None:
+        pytest.skip("gcc not installed")
+
     model = unittests_simple.ModelPidController(name="Axis W", value=42, i_param=3.14)
     renderer = renderer_c.RendererC(model=model)
 
@@ -31,7 +37,7 @@ def test_src_c() -> None:
         )
 
         subprocess.run(
-            ["gcc", "-Wall", "-Wextra", "dump_values.c", "-o", "dump_values"],
+            [gcc, "-Wall", "-Wextra", "dump_values.c", "-o", "dump_values"],
             cwd=DIRECTORY_SRC_C,
             check=True,
         )
