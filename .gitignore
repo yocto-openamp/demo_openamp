@@ -1,0 +1,7 @@
+**/*.pyc
+yocto-workdir/.repo/
+yocto-workdir/
+zephyr/
+demo_*/build/
+modules/
+.west/
