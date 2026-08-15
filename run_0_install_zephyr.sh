@@ -16,7 +16,8 @@ time (
 
     uv pip install west
 
-    west init .
+    west init . --manifest-url https://github.com/zephyrproject-rtos/zephyr --manifest-rev v4.4.2 --clone-opt=--depth=1
+
 
     export WEST_NUCLEO="hal_stm32 cmsis_6"
     export WEST_IMX="hal_nxp open-amp libmetal"
