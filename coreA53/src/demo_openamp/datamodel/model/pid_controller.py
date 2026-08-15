@@ -6,7 +6,7 @@ from ..utils.util_pydantic import SchemaExtra
 class ModelPidController(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
-    names: str = pydantic.Field(
+    name: str = pydantic.Field(
         default="AxisXYZ",
         min_length=3,
         max_length=20,

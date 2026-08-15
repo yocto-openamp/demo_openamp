@@ -1,6 +1,5 @@
-
-from datamodel import unittests_simple
-from renderer import renderer_c
+from demo_openamp.datamodel.model import unittests_simple
+from demo_openamp.datamodel.renderer import renderer_c
 
 
 def test_datamodel_fields_are_set() -> None:
@@ -55,4 +54,3 @@ def test_renderer_c() -> None:
     assert model3.name == model2.name
     assert model3.value == model2.value
     assert model3.i_param == model2.i_param
-

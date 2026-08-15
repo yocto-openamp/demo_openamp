@@ -2,8 +2,8 @@ import pathlib
 import re
 import subprocess
 
-from datamodel import unittests_simple
-from renderer import renderer_c
+from demo_openamp.datamodel.model import unittests_simple
+from demo_openamp.datamodel.renderer import renderer_c
 
 DIRECTORY_OF_THIS_FILE = pathlib.Path(__file__).parent
 DIRECTORY_SRC_C = DIRECTORY_OF_THIS_FILE / "src_c"
@@ -17,6 +17,7 @@ def test_src_c() -> None:
         """
         TODO: Clearer interface
         """
+
         def generate(filename: pathlib.Path, source: str) -> None:
             filename.write_text(source)
 
