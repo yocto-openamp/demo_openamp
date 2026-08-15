@@ -1,0 +1,33 @@
+/*
+This overlay is based on:
+hmp_mcuxpresso-zephyr/sources/rpmsg-lite/zephyr/samples/rpmsglite_pingpong/remote/boards/mimxrt1160_evk_mimxrt1166_cm4.overlay
+hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_evk_mimx8ml8_m7.overlay
+*/
+
+/ {
+    chosen {
+        zephyr,ipc_shm = &shram;
+        zephyr,ipc = &mailbox0;
+		zephyr,ipc_rsc_table = &rsc_table;
+		zephyr,console = &uart4;
+    };
+
+    shram: memory@55000000 {
+        compatible = "mmio-sram";
+        reg = <0x55000000 0x500000>;
+    };
+
+	rsc_table: memory@550ff000 {
+		compatible = "mmio-sram";
+		reg = <0x550ff000 0x1000>;
+	};
+};
+
+&mailbox0 {
+    status = "okay";
+};
+
+&uart4 {
+	status = "okay";
+	current-speed = <115200>;
+};

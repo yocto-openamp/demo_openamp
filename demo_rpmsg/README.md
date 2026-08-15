@@ -17,7 +17,7 @@ dmsg --follow
 
 [ 9788.823980] remoteproc remoteproc0: stopped remote processor imx-rproc
 [ 9788.875421] remoteproc remoteproc0: powering up imx-rproc
-[ 9788.878879] remoteproc remoteproc0: Booting fw image rpmsg_demo.elf, size 1210028
+[ 9788.878879] remoteproc remoteproc0: Booting fw image demo_rpmsg.elf, size 1210028
 [ 9789.391001] rproc-virtio rproc-virtio.2.auto: assigned reserved memory node vdevbuffer@55400000
 [ 9789.392865] virtio_rpmsg_bus virtio0: rpmsg host is online
 [ 9789.393014] rproc-virtio rproc-virtio.2.auto: registered virtio0 (type 7)
@@ -30,11 +30,11 @@ dmsg --follow
 tio --baudrate=115200 /dev/ttyUSB0
 
 *** Booting Zephyr OS build v4.4.0-10953-gda0718ca0d52 ***
-[00:00:00.004,000] <inf> rpmsg_demo: Starting Verdin iMX8MP OpenAMP RpMsg demo
-[00:00:00.513,000] <inf> rpmsg_demo: Linux RPMsg endpoint is ready
-[00:00:01.274,000] <inf> rpmsg_demo: RPMsg received 21 bytes: 'LINUX sending rpmsg 0'
-[00:00:01.283,000] <inf> rpmsg_demo: RPMsg received 21 bytes: 'LINUX sending rpmsg 1'
-[00:00:01.292,000] <inf> rpmsg_demo: RPMsg received 21 bytes: 'LINUX sending rpmsg 2'
+[00:00:00.004,000] <inf> demo_rpmsg: Starting Verdin iMX8MP OpenAMP RpMsg demo
+[00:00:00.513,000] <inf> demo_rpmsg: Linux RPMsg endpoint is ready
+[00:00:01.274,000] <inf> demo_rpmsg: RPMsg received 21 bytes: 'LINUX sending rpmsg 0'
+[00:00:01.283,000] <inf> demo_rpmsg: RPMsg received 21 bytes: 'LINUX sending rpmsg 1'
+[00:00:01.292,000] <inf> demo_rpmsg: RPMsg received 21 bytes: 'LINUX sending rpmsg 2'
 ```
 
 ```bash
@@ -52,7 +52,7 @@ virtio0.rpmsg_ns.53.53
 ## Compare this binary against working TCM binary
 
 ```bash
-export A=build/zephyr/rpmsg_demo.elf
+export A=build/zephyr/demo_rpmsg.elf
 export B=/lib/firmware/imx8mp_m7_TCM_rpmsg_lite_pingpong_rtos_linux_remote.elf
 readelf -SW $A | grep resource_table
 Section Headers:

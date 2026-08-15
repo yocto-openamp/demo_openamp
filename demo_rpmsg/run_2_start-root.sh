@@ -9,8 +9,8 @@ modprobe rpmsg_char
 mkdir -p /root/firmware
 echo stop > /sys/class/remoteproc/remoteproc0/state 2>/dev/null || true
 echo /root/firmware > /sys/module/firmware_class/parameters/path
-cp ./build/zephyr/rpmsg_demo.elf /root/firmware
-echo rpmsg_demo.elf > /sys/class/remoteproc/remoteproc0/firmware
+cp ./build/zephyr/demo_rpmsg.elf /root/firmware
+echo demo_rpmsg.elf > /sys/class/remoteproc/remoteproc0/firmware
 echo start > /sys/class/remoteproc/remoteproc0/state
 
 python3 python/src/openamp/main_rpmsg_pingpong.py

@@ -1,5 +1,10 @@
 set -euox pipefail
 
+if [[ ! -f ./PROJECT_MARKER.txt ]]; then
+	echo "ERROR: Start this script from the corresponding folder!" >&2
+	exit 1
+fi
+
 ZEPHYR_SDK_INSTALL_DIR="${ZEPHYR_SDK_INSTALL_DIR:-$HOME/zephyr-sdk-1.0.1}"
 export ZEPHYR_SDK_INSTALL_DIR
 
