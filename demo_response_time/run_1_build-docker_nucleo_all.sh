@@ -13,7 +13,7 @@ time docker run --rm -it \
 	--user "$(id -u):$(id -g)" \
 	--env HOME=/tmp \
 	-v "$PWD:/workspace" \
-	zephyr-dev \
+	zephyr-dev:$(uname -m) \
 	west build \
 	$PRISTINE \
 	--board nucleo_f722ze \
