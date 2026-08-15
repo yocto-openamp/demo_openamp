@@ -2,9 +2,11 @@ FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ZEPHYR_BASE=/opt/zephyrproject/zephyr
+ENV ZEPHYR_SDK_INSTALL_DIR=/opt/zephyr-sdk
 
 RUN apt-get update && apt-get install -y \
     git \
+    wget \
     curl \
     cmake \
     ninja-build \
@@ -12,17 +14,14 @@ RUN apt-get update && apt-get install -y \
     ccache \
     dfu-util \
     device-tree-compiler \
-    wget \
-    curl \
     xz-utils \
     file \
     make \
-    gcc \
-    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # UV and python
 ENV UV_INSTALL_DIR=/usr/local/bin
+ENV UV_PYTHON_INSTALL_DIR=/opt/uv/python
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 RUN uv venv --python 3.13.13 /opt/zephyrproject/.venv
 ENV PATH="/opt/zephyrproject/.venv/bin:${PATH}"
@@ -47,7 +46,8 @@ RUN west init /opt/zephyrproject \
 
 # Install Zephyr SDK
 RUN cd /opt/zephyrproject/zephyr \
-    && west sdk install
+    && west sdk install --install-dir "$ZEPHYR_SDK_INSTALL_DIR" \
+        --gnu-toolchains arm-zephyr-eabi
 
 WORKDIR /workspace
 

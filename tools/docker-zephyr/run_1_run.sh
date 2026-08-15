@@ -1,5 +1,5 @@
 set -euox pipefail
 
-dockerdocker run --rm -it \
+docker run --rm -it \
     -v "$PWD:/workspace" \
     zephyr-dev
