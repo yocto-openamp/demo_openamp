@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ ! -f ../PROJECT_MARKER.txt ]]; then
+REPO_DIR=$(dirname "$PWD")
+if [[ ! -f $REPO_DIR/PROJECT_MARKER.txt ]]; then
 	echo "ERROR: Start this script from the corresponding folder!" >&2
 	exit 1
 fi
 
-. ../.venv/bin/activate
-
-ZEPHYR_SDK_INSTALL_DIR="${ZEPHYR_SDK_INSTALL_DIR:-$HOME/zephyr-sdk-1.0.1}"
-export ZEPHYR_SDK_INSTALL_DIR
-
 # PRISTINE=--pristine
 PRISTINE=
 
-time west build \
-    $PRISTINE \
+time docker run --rm -it \
+    --workdir $PWD \
+	--user "$(id -u):$(id -g)" \
+	--volume "$REPO_DIR:$REPO_DIR" \
+	ghcr.io/yocto-openamp/zephyr-dev:$(uname -m) \
+	west build \
+	$PRISTINE \
 	--board verdin_imx8mp/mimx8ml8/m7 \
 	--build-dir build/imx8mp \
 	zephyr \

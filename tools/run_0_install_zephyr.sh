@@ -1,6 +1,7 @@
 set -euox pipefail
 
-if [[ ! -f ./PROJECT_MARKER.txt ]]; then
+REPO_DIR=$(dirname "$PWD")
+if [[ ! -f $REPO_DIR/PROJECT_MARKER.txt ]]; then
 	echo "ERROR: Start this script from the corresponding folder!" >&2
 	exit 1
 fi
@@ -9,6 +10,7 @@ ZEPHYR_SDK_INSTALL_DIR="${ZEPHYR_SDK_INSTALL_DIR:-$HOME/zephyr-sdk-1.0.1}"
 export ZEPHYR_SDK_INSTALL_DIR
 
 time (
+    cd $REPO_DIR
     rm -rf .venv .west build bootloader modules zephyr
 
     uv venv --python 3.13.13

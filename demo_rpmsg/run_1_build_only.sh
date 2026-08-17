@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+REPO_DIR=$(dirname "$PWD")
+if [[ ! -f $REPO_DIR/PROJECT_MARKER.txt ]]; then
+	echo "ERROR: Start this script from the corresponding folder!" >&2
+	exit 1
+fi
+
 # ninja -C build -t clean CMakeFiles/app.dir/src/main.c.obj
 
-time cmake --build build
+time docker run --rm -it \
+	--workdir $PWD \
+	--user "$(id -u):$(id -g)" \
+	--volume "$REPO_DIR:$REPO_DIR" \
+	ghcr.io/yocto-openamp/zephyr-dev:$(uname -m) \
+	cmake --build build
