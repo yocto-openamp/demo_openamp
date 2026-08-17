@@ -3,7 +3,7 @@
 import asyncio
 import time
 
-from util_rpmsg import Rpmsg
+from demo_openamp.openamp.util_rpmsg import Rpmsg
 
 # This must match with the same string in main.cpp
 CHANNEL_NAME: str = "rpmsg-demo-xyrx2"

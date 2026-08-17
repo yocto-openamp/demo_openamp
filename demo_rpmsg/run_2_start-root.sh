@@ -1,5 +1,11 @@
 set -x
 
+REPO_DIR=$(dirname "$PWD")
+if [[ ! -f $REPO_DIR/PROJECT_MARKER.txt ]]; then
+	echo "ERROR: Start this script from the corresponding folder!" >&2
+	exit 1
+fi
+
 modprobe rpmsg_ns
 modprobe rpmsg_ctrl
 modprobe rpmsg_char
@@ -13,4 +19,4 @@ cp ./build/zephyr/demo_rpmsg.elf /root/firmware
 echo demo_rpmsg.elf > /sys/class/remoteproc/remoteproc0/firmware
 echo start > /sys/class/remoteproc/remoteproc0/state
 
-python3 python/src/openamp/main_rpmsg_pingpong.py
+$REPO_DIR/.venv/bin/python linux/src/main_rpmsg_pingpong.py
