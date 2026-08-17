@@ -1,26 +1,25 @@
-FROM ubuntu:26.04
+FROM alpine:3.24.1
 
-ENV DEBIAN_FRONTEND=noninteractive
 ENV ZEPHYR_TOP=/opt/zephyrproject
 ENV ZEPHYR_BASE=${ZEPHYR_TOP}/zephyr
 ENV ZEPHYR_SDK_INSTALL_DIR=/opt/zephyr-sdk
 
 # ccache
 
-RUN apt-get update \
-    && apt-get install -y \
+RUN apk add --no-cache \
+        bash \
         git \
         wget \
         curl \
         cmake \
-        ninja-build \
+        ninja \
         gperf \
         dfu-util \
-        device-tree-compiler \
-        xz-utils \
+        dtc \
+        xz \
         file \
         make \
-    && rm -rf /var/lib/apt/lists/*
+        gcompat
 
 # UV and python
 ENV UV_INSTALL_DIR=/usr/local/bin
@@ -51,6 +50,7 @@ RUN west init $ZEPHYR_TOP \
 RUN cd $ZEPHYR_BASE \
     && west sdk install \
         --install-dir "$ZEPHYR_SDK_INSTALL_DIR" \
+        --no-hosttools \
         --gnu-toolchains arm-zephyr-eabi
 
 
