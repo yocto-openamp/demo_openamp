@@ -1,10 +1,10 @@
 **/*.pyc
 /yocto-workdir/.repo/
 /yocto-workdir/
-/zephyr/
 /demo_*/build/
 /modules/
 /.west/
+build/
 **/generated_*
 coreA53/tests/model_duallist.py
 coreA53/tests/schema_model_list.py

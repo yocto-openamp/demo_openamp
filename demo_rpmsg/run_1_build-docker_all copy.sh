@@ -19,7 +19,7 @@ time docker run --rm -it \
 	west build \
 	$PRISTINE \
 	--board verdin_imx8mp/mimx8ml8/m7 \
-	--build-dir build/imx8mp \
+	--build-dir build \
 	zephyr \
 	-- \
 	-DCONF_FILE=prj_verdin_imx8mp.conf \

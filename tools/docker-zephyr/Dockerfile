@@ -1,8 +1,11 @@
 FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV ZEPHYR_BASE=/opt/zephyrproject/zephyr
+ENV ZEPHYR_TOP=/opt/zephyrproject
+ENV ZEPHYR_BASE=${ZEPHYR_TOP}/zephyr
 ENV ZEPHYR_SDK_INSTALL_DIR=/opt/zephyr-sdk
+
+# ccache
 
 RUN apt-get update \
     && apt-get install -y \
@@ -12,7 +15,6 @@ RUN apt-get update \
         cmake \
         ninja-build \
         gperf \
-        ccache \
         dfu-util \
         device-tree-compiler \
         xz-utils \
@@ -24,32 +26,38 @@ RUN apt-get update \
 ENV UV_INSTALL_DIR=/usr/local/bin
 ENV UV_PYTHON_INSTALL_DIR=/opt/uv/python
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-RUN uv venv --python 3.13.13 /opt/zephyrproject/.venv
-ENV PATH="/opt/zephyrproject/.venv/bin:${PATH}"
+RUN uv venv --python 3.13.13 $ZEPHYR_TOP/.venv
+ENV PATH="$ZEPHYR_TOP/.venv/bin:${PATH}"
 
 # west
 RUN uv pip install --no-cache-dir west
 
 ENV WEST_NUCLEO="hal_stm32 cmsis_6"
 ENV WEST_IMX="hal_nxp open-amp libmetal"
+# ENV ZEPHYR_REV="v4.4.2"
+ENV ZEPHYR_REV="main"
 
 # Fetch Zephyr + all west modules
-RUN west init /opt/zephyrproject \
+RUN west init $ZEPHYR_TOP \
         --manifest-url https://github.com/zephyrproject-rtos/zephyr \
-        --manifest-rev v4.4.2 \
+        --manifest-rev $ZEPHYR_REV \
         --clone-opt=--depth=1 \
-    && cd /opt/zephyrproject \
+    && cd $ZEPHYR_TOP \
     && west update zephyr $WEST_NUCLEO $WEST_IMX \
     && uv pip install --no-cache-dir -r zephyr/scripts/requirements-base.txt \
     && west zephyr-export
-# RUN cd /opt/zephyrproject \
-#     && west packages pip --install
 
 # Install Zephyr SDK
-RUN cd /opt/zephyrproject/zephyr \
+RUN cd $ZEPHYR_BASE \
     && west sdk install \
         --install-dir "$ZEPHYR_SDK_INSTALL_DIR" \
         --gnu-toolchains arm-zephyr-eabi
+
+
+ENV XDG_CACHE_HOME=/tmp/.cache
+RUN mkdir -m 1777 "$XDG_CACHE_HOME"
+
+ENV HOME=/tmp
 
 WORKDIR /workspace
 
