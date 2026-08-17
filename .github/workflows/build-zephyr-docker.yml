@@ -1,0 +1,57 @@
+name: Build Zephyr Docker images
+
+on:
+  workflow_dispatch:
+    inputs:
+      push_to_ghcr:
+        description: Push images to GitHub Container Registry
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+            script: run_0_build-aarch64.sh
+          - arch: x86_64
+            script: run_0_build-x86_64.sh
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Enable ARM64 emulation
+        if: matrix.arch == 'aarch64'
+        run: docker run --privileged --rm tonistiigi/binfmt --install arm64
+
+      - name: Log in to GHCR
+        if: inputs.push_to_ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        working-directory: tools/docker-zephyr
+        run: ./${{ matrix.script }}
+
+      - name: Push image to GHCR
+        if: inputs.push_to_ghcr
+        env:
+          ARCH: ${{ matrix.arch }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          image="ghcr.io/${OWNER,,}/zephyr-dev:${ARCH}"
+          docker tag "zephyr-dev:${ARCH}" "${image}"
+          docker push "${image}"
