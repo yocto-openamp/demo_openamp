@@ -1,9 +1,13 @@
 #include <zephyr/dt-bindings/gpio/gpio.h>
 
+&gpio1 {
+	status = "okay";
+};
+
 / {
 	zephyr,user {
-		gpio-direct-in-gpios = <&gpio3 9 GPIO_ACTIVE_HIGH>;
-		gpio-direct-out-gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>;
+		gpio-direct-in-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
+		gpio-direct-out-gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;
 
 		/* nucleo_f722ze.dts: sw0 = &user_button */
 		gpio-direct-button-in-gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;
@@ -21,13 +25,28 @@
 			gpios = <&gpio3 5 GPIO_ACTIVE_HIGH>;
 		};
 
+		/* SODIMM 52 - USER_LED_1_RED */
+		led1red {
+			label = "USER_LED_1_RED";
+			gpios = <&gpio3 0 GPIO_ACTIVE_HIGH>;
+		};
+
+		/* SODIMM 54 - USER_LED_1_GREEN */
+		led1green {
+			label = "USER_LED_1_GREEN";
+			gpios = <&gpio3 1 GPIO_ACTIVE_HIGH>;
+		};
+
 		/* SODIMM 56 - USER_LED_2_RED */
 		led2red {
 			label = "USER_LED_2_RED";
-			/* color = <LED_COLOR_ID_RED>; */
-			/* function = LED_FUNCTION_DEBUG; */
-			/* function-enumerator = <2>; */
 			gpios = <&gpio3 6 GPIO_ACTIVE_HIGH>;
+		};
+
+		/* SODIMM 58 - USER_LED_2_GREEN */
+		led3green {
+			label = "USER_LED_2_GREEN";
+			gpios = <&gpio3 7 GPIO_ACTIVE_HIGH>;
 		};
 	};
 
