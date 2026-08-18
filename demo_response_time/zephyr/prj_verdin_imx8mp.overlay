@@ -20,6 +20,15 @@
 			label = "User LED";
 			gpios = <&gpio3 5 GPIO_ACTIVE_HIGH>;
 		};
+
+		/* SODIMM 56 - USER_LED_2_RED */
+		led2red {
+			label = "USER_LED_2_RED";
+			/* color = <LED_COLOR_ID_RED>; */
+			/* function = LED_FUNCTION_DEBUG; */
+			/* function-enumerator = <2>; */
+			gpios = <&gpio3 6 GPIO_ACTIVE_HIGH>;
+		};
 	};
 
 	buttons {

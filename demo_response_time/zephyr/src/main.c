@@ -35,6 +35,7 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 #endif
 
 #define SW0_NODE DT_ALIAS(sw0)
+#define LED_2_RED_NODE DT_PATH(leds, led2red)
 
 #if !DT_NODE_HAS_STATUS(SW0_NODE, okay)
 #error "Missing sw0 alias in board devicetree"
@@ -71,6 +72,14 @@ static const struct gpio_dt_spec gpio_direct_button_in = GPIO_DT_SPEC_GET(ZEPHYR
 static const struct gpio_dt_spec gpio_direct_led_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_led_out_gpios);
 static const struct gpio_dt_spec gpio_direct_in = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_in_gpios);
 static const struct gpio_dt_spec gpio_direct_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_out_gpios);
+
+#if DT_NODE_EXISTS(LED_2_RED_NODE)
+static const struct gpio_dt_spec gpio_led2red = GPIO_DT_SPEC_GET(LED_2_RED_NODE, gpios);
+#define LED_BLINK_STACK_SIZE 512
+#define LED_BLINK_PRIORITY 5
+K_THREAD_STACK_DEFINE(led_blink_stack, LED_BLINK_STACK_SIZE);
+static struct k_thread led_blink_thread;
+#endif
 
 #if defined(CONFIG_ADC)
 static const struct device *const dac1_dev = DEVICE_DT_GET(DAC1_NODE);
@@ -268,6 +277,41 @@ static int init_isr_gpioHAL(void)
 }
 #endif // gpio_hal_in_gpios
 
+#if DT_NODE_EXISTS(LED_2_RED_NODE)
+static void blink_led2red(void *arg1, void *arg2, void *arg3)
+{
+	ARG_UNUSED(arg1);
+	ARG_UNUSED(arg2);
+	ARG_UNUSED(arg3);
+
+	while (1) {
+		(void)gpio_pin_toggle_dt(&gpio_led2red);
+		k_sleep(K_MSEC(500));
+	}
+}
+
+static int init_led2red_blink(void)
+{
+	if (!device_is_ready(gpio_led2red.port)) {
+		LOG_ERR("LED 2 device not ready");
+		return -ENODEV;
+	}
+
+	int ret = gpio_pin_configure_dt(&gpio_led2red, GPIO_OUTPUT_INACTIVE);
+	if (ret != 0) {
+		LOG_ERR("LED 2 configure failed: %d", ret);
+		return ret;
+	}
+
+	k_thread_create(&led_blink_thread, led_blink_stack,
+		K_THREAD_STACK_SIZEOF(led_blink_stack), blink_led2red, NULL, NULL, NULL,
+		LED_BLINK_PRIORITY, 0, K_NO_WAIT);
+
+	LOG_INF("LED 2 blink thread ready (interval: 500 ms)");
+	return 0;
+}
+#endif
+
 /*
 DAC/ADC
 */
@@ -362,6 +406,13 @@ int main(void)
 		return ret;
 	}
 #endif // gpio_hal_in_gpios
+
+#if DT_NODE_EXISTS(LED_2_RED_NODE)
+	ret = init_led2red_blink();
+	if (ret != 0) {
+		return ret;
+	}
+#endif
 
 #if defined(CONFIG_ADC)
 	init_adc_dac();
