@@ -67,6 +67,8 @@ static const struct device *const adc2_dev = DEVICE_DT_GET(ADC2_NODE);
 static const struct device *const adc3_dev = DEVICE_DT_GET(ADC3_NODE);
 #endif // CONFIG_ADC
 
+static struct gpio_callback gpio_callback_isr_gpioHAL;
+
 static int init_isr_gpioDirect(void)
 {
 	int ret;
