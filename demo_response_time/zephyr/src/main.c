@@ -69,67 +69,6 @@ static const struct device *const adc3_dev = DEVICE_DT_GET(ADC3_NODE);
 
 static struct gpio_callback gpio_callback_isr_gpioHAL;
 
-static int init_isr_gpioDirect(void)
-{
-	int ret;
-
-#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
-	if (!device_is_ready(gpio_direct_button_in.port)) {
-		LOG_ERR("button input device not ready");
-		return -ENODEV;
-	}
-
-	if (!device_is_ready(gpio_direct_led_out.port)) {
-		LOG_ERR("led0 output device not ready");
-		return -ENODEV;
-	}
-
-	ret = gpio_pin_configure_dt(&gpio_direct_led_out, GPIO_OUTPUT_INACTIVE);
-	if (ret != 0) {
-		LOG_ERR("led0 configure failed: %d", ret);
-		return ret;
-	}
-
-	ret = gpio_pin_configure_dt(&gpio_direct_button_in, GPIO_INPUT);
-	if (ret != 0) {
-		LOG_ERR("gpio_direct_button_in configure failed: %d", ret);
-		return ret;
-	}
-
-	LOG_INF("GPIO button ready (in: port=%s pin=%d, out: port=%s pin=%d)",
-		gpio_direct_button_in.port->name, gpio_direct_button_in.pin,
-		gpio_direct_led_out.port->name, gpio_direct_led_out.pin);
-#endif // gpio_direct_button_in_gpios
-
-	if (!device_is_ready(gpio_direct_in.port)) {
-		LOG_ERR("GPIO_DIRECT_IN device not ready");
-		return -ENODEV;
-	}
-
-	if (!device_is_ready(gpio_direct_out.port)) {
-		LOG_ERR("GPIO_DIRECT_OUT device not ready");
-		return -ENODEV;
-	}
-
-	ret = gpio_pin_configure_dt(&gpio_direct_in, GPIO_INPUT);
-	if (ret != 0) {
-		LOG_ERR("gpio_direct_in configure failed: %d", ret);
-		return ret;
-	}
-
-	ret = gpio_pin_configure_dt(&gpio_direct_out, GPIO_OUTPUT_INACTIVE);
-	if (ret != 0) {
-		LOG_ERR("gpio_direct_out configure failed: %d", ret);
-		return ret;
-	}
-
-	LOG_INF("GPIO_DIRECT ready (in: port=%s pin=%d, out: port=%s pin=%d)",
-		gpio_direct_in.port->name, gpio_direct_in.pin,
-		gpio_direct_out.port->name, gpio_direct_out.pin);
-
-	return 0;
-}
-
 /*
 isrGpioHAL
 
@@ -140,8 +79,6 @@ static void callback_isr_gpioHAL(const struct device *port, struct gpio_callback
 	ARG_UNUSED(port);
 	ARG_UNUSED(cb);
 	ARG_UNUSED(pins);
-
-	LOG_ERR("callback_isr_gpioHAL");
 
 	int in_val = gpio_pin_get_dt(&gpio_direct_in);
 	(void)gpio_pin_set_dt(&gpio_direct_out, in_val > 0);
@@ -163,13 +100,13 @@ static int init_isr_gpioHAL(void)
 
 	ret = gpio_pin_configure_dt(&gpio_direct_in, GPIO_INPUT);
 	if (ret != 0) {
-		LOG_ERR("gpio_hal_in configure failed: %d", ret);
+		LOG_ERR("gpio_direct_in configure failed: %d", ret);
 		return ret;
 	}
 
 	ret = gpio_pin_configure_dt(&gpio_direct_out, GPIO_OUTPUT_INACTIVE);
 	if (ret != 0) {
-		LOG_ERR("gpio_hal_out configure failed: %d", ret);
+		LOG_ERR("gpio_direct_out configure failed: %d", ret);
 		return ret;
 	}
 
@@ -199,8 +136,8 @@ static void blink_led1green(void *arg1, void *arg2, void *arg3)
 	ARG_UNUSED(arg3);
 
 	while (1) {
-		int in_val = gpio_pin_get_dt(&gpio_direct_in);
-		(void)gpio_pin_set_dt(&gpio_led1red, in_val > 0);
+		// int in_val = gpio_pin_get_dt(&gpio_direct_in);
+		// (void)gpio_pin_set_dt(&gpio_led1red, in_val > 0);
 
 		(void)gpio_pin_toggle_dt(&gpio_led1green);
 		(void)gpio_pin_toggle_dt(&gpio_led2green);
@@ -345,13 +282,7 @@ static void endless_loop_adc_dac(void)
 
 int main(void)
 {
-	int ret = init_isr_gpioDirect();
-	if (ret != 0) {
-		return ret;
-	}
-
-
-	ret = init_isr_gpioHAL();
+	int ret = init_isr_gpioHAL();
 	if (ret != 0) {
 		return ret;
 	}
