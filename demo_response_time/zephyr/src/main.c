@@ -18,14 +18,6 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 
 #define ZEPHYR_USER_NODE DT_PATH(zephyr_user)
 
-#if !DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
-#error "Missing gpio-direct-button-in-gpios in zephyr,user devicetree node"
-#endif
-
-#if !DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_led_out_gpios)
-#error "Missing gpio-direct-led-out-gpios in zephyr,user devicetree node"
-#endif
-
 #if !DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_in_gpios)
 #error "Missing gpio-direct-in-gpios in zephyr,user devicetree node"
 #endif
@@ -48,12 +40,16 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 #define ADC3_NODE DT_NODELABEL(adc3)
 #endif // CONFIG_ADC
 
+#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
 #define EXTI_GPIO_DIRECT_BUTTON_IN_LINE BIT(gpio_direct_button_in.pin)
+#endif // gpio_direct_button_in_gpios
 #define EXTI_GPIO_DIRECT_IN_LINE BIT(gpio_direct_in.pin)
 #define EXTI_DIRECT_LINES (EXTI_GPIO_DIRECT_BUTTON_IN_LINE | EXTI_GPIO_DIRECT_IN_LINE)
 
+#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
 #define GPIO_DIRECT_BUTTON_IN ((GPIO_TypeDef *)DT_REG_ADDR(DT_GPIO_CTLR(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)))
 #define GPIO_DIRECT_LED_OUT ((GPIO_TypeDef *)DT_REG_ADDR(DT_GPIO_CTLR(ZEPHYR_USER_NODE, gpio_direct_led_out_gpios)))
+#endif // gpio_direct_button_in_gpios
 #define GPIO_DIRECT_IN ((GPIO_TypeDef *)DT_REG_ADDR(DT_GPIO_CTLR(ZEPHYR_USER_NODE, gpio_direct_in_gpios)))
 #define GPIO_DIRECT_OUT ((GPIO_TypeDef *)DT_REG_ADDR(DT_GPIO_CTLR(ZEPHYR_USER_NODE, gpio_direct_out_gpios)))
 
@@ -68,8 +64,10 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 static const struct gpio_dt_spec gpio_hal_in = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_hal_in_gpios);
 static const struct gpio_dt_spec gpio_hal_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_hal_out_gpios);
 #endif // gpio_hal_in_gpios
+#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
 static const struct gpio_dt_spec gpio_direct_button_in = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios);
 static const struct gpio_dt_spec gpio_direct_led_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_led_out_gpios);
+#endif // gpio_direct_button_in_gpios
 static const struct gpio_dt_spec gpio_direct_in = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_in_gpios);
 static const struct gpio_dt_spec gpio_direct_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_out_gpios);
 
@@ -118,13 +116,15 @@ ISR_DIRECT_DECLARE(exti15_10_direct_isr)
 		}
 	}
 
-	if ((pending & EXTI_GPIO_DIRECT_BUTTON_IN_LINE) != 0U) {
-		if ((GPIO_DIRECT_BUTTON_IN->IDR & BIT(gpio_direct_button_in.pin)) != 0U) {
-			GPIO_DIRECT_LED_OUT->BSRR = BIT(gpio_direct_led_out.pin);
-		} else {
-			GPIO_DIRECT_LED_OUT->BSRR = BIT(gpio_direct_led_out.pin + 16);
-		}
+#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
+if ((pending & EXTI_GPIO_DIRECT_BUTTON_IN_LINE) != 0U) {
+	if ((GPIO_DIRECT_BUTTON_IN->IDR & BIT(gpio_direct_button_in.pin)) != 0U) {
+		GPIO_DIRECT_LED_OUT->BSRR = BIT(gpio_direct_led_out.pin);
+	} else {
+		GPIO_DIRECT_LED_OUT->BSRR = BIT(gpio_direct_led_out.pin + 16);
 	}
+}
+#endif // gpio_direct_button_in_gpios
 
 	return 0;
 }
@@ -134,34 +134,38 @@ static int init_isr_gpioDirect(void)
 {
 	int ret;
 
-	/*
-	gpio_direct_button_in
-	gpio_direct_led_out
-	*/
-	if (!device_is_ready(gpio_direct_button_in.port)) {
-		LOG_ERR("button input device not ready");
-		return -ENODEV;
-	}
+#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
+/*
+gpio_direct_button_in
+gpio_direct_led_out
+*/
+if (!device_is_ready(gpio_direct_button_in.port)) {
+	LOG_ERR("button input device not ready");
+	return -ENODEV;
+}
 
-	if (!device_is_ready(gpio_direct_led_out.port)) {
-		LOG_ERR("led0 output device not ready");
-		return -ENODEV;
-	}
+if (!device_is_ready(gpio_direct_led_out.port)) {
+	LOG_ERR("led0 output device not ready");
+	return -ENODEV;
+}
 
-	ret = gpio_pin_configure_dt(&gpio_direct_led_out, GPIO_OUTPUT_INACTIVE);
-	if (ret != 0) {
-		LOG_ERR("led0 configure failed: %d", ret);
-		return ret;
-	}
+ret = gpio_pin_configure_dt(&gpio_direct_led_out, GPIO_OUTPUT_INACTIVE);
+if (ret != 0) {
+	LOG_ERR("led0 configure failed: %d", ret);
+	return ret;
+}
+#endif // gpio_direct_button_in_gpios
 
-	ret = gpio_pin_configure_dt(&gpio_direct_button_in, GPIO_INPUT);
-	if (ret != 0) {
-		LOG_ERR("gpio_direct_button_in configure failed: %d", ret);
-		return ret;
-	}
+#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
+ret = gpio_pin_configure_dt(&gpio_direct_button_in, GPIO_INPUT);
+if (ret != 0) {
+	LOG_ERR("gpio_direct_button_in configure failed: %d", ret);
+	return ret;
+}
 
-	LOG_INF("isr_button_led ready (in: port=%s pin=%d, out: port=%s pin=%d)",
-		gpio_direct_button_in.port->name, gpio_direct_button_in.pin, gpio_direct_led_out.port->name, gpio_direct_led_out.pin);
+LOG_INF("isr_button_led ready (in: port=%s pin=%d, out: port=%s pin=%d)",
+	gpio_direct_button_in.port->name, gpio_direct_button_in.pin, gpio_direct_led_out.port->name, gpio_direct_led_out.pin);
+#endif // gpio_direct_button_in_gpios
 
     /*
 	gpio_direct_in

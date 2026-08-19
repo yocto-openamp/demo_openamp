@@ -17,6 +17,7 @@ dev = [
     "pytest>=7.0",
     "mypy",
     "ruff",
+    "mpremote",
 ]
 
 [tool.pdm]

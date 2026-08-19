@@ -10,9 +10,9 @@
 		gpio-direct-out-gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;
 
 		/* nucleo_f722ze.dts: sw0 = &user_button */
-		gpio-direct-button-in-gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>;
+		/* gpio-direct-button-in-gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>; */
 		/* led1 = &blue_led */
-		gpio-direct-led-out-gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>;
+		/* gpio-direct-led-out-gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>; */
 	};
 };
 
