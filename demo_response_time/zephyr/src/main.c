@@ -2,6 +2,8 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/sys/util.h>
+#include <soc.h>
 #if defined(CONFIG_ADC)
 #include <zephyr/drivers/dac.h>
 #include <zephyr/drivers/adc.h>
@@ -49,6 +51,10 @@ static const struct gpio_dt_spec gpio_direct_led_out = GPIO_DT_SPEC_GET(ZEPHYR_U
 static const struct gpio_dt_spec gpio_direct_in = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_in_gpios);
 static const struct gpio_dt_spec gpio_direct_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_out_gpios);
 
+#define GPIO1_NODE DT_NODELABEL(gpio1)
+
+static struct gpio_callback gpio_callback_isr_gpioHAL;
+
 #if DT_NODE_EXISTS(LED1GREEN_NODE)
 static const struct gpio_dt_spec gpio_led1green = GPIO_DT_SPEC_GET(LED1GREEN_NODE, gpios);
 static const struct gpio_dt_spec gpio_led2green = GPIO_DT_SPEC_GET(LED2GREEN_NODE, gpios);
@@ -67,21 +73,18 @@ static const struct device *const adc2_dev = DEVICE_DT_GET(ADC2_NODE);
 static const struct device *const adc3_dev = DEVICE_DT_GET(ADC3_NODE);
 #endif // CONFIG_ADC
 
-static struct gpio_callback gpio_callback_isr_gpioHAL;
-
-/*
-isrGpioHAL
-
-Interrupt Service Routine (ISR) using the zephyr HAL
-*/
 static void callback_isr_gpioHAL(const struct device *port, struct gpio_callback *cb, uint32_t pins)
 {
 	ARG_UNUSED(port);
 	ARG_UNUSED(cb);
-	ARG_UNUSED(pins);
 
-	int in_val = gpio_pin_get_dt(&gpio_direct_in);
-	(void)gpio_pin_set_dt(&gpio_direct_out, in_val > 0);
+	if ((pins & BIT(gpio_direct_in.pin)) == 0U) {
+		return;
+	}
+
+	GPIO_Type *gpio1 = (GPIO_Type *)DT_REG_ADDR(GPIO1_NODE);
+	const bool input_level = (gpio1->DR & BIT(gpio_direct_in.pin)) != 0U;
+	WRITE_BIT(gpio1->DR, gpio_direct_out.pin, input_level ? 1U : 0U);
 }
 
 static int init_isr_gpioHAL(void)
@@ -110,12 +113,6 @@ static int init_isr_gpioHAL(void)
 		return ret;
 	}
 
-	ret = gpio_pin_interrupt_configure_dt(&gpio_direct_in, GPIO_INT_EDGE_BOTH);
-	if (ret != 0) {
-		LOG_ERR("gpio_direct_in irq configure failed: %d", ret);
-		return ret;
-	}
-
 	gpio_init_callback(&gpio_callback_isr_gpioHAL, callback_isr_gpioHAL, BIT(gpio_direct_in.pin));
 	ret = gpio_add_callback(gpio_direct_in.port, &gpio_callback_isr_gpioHAL);
 	if (ret != 0) {
@@ -123,8 +120,8 @@ static int init_isr_gpioHAL(void)
 		return ret;
 	}
 
-	LOG_INF("ISR_GPIO_HAL ready (in: port=%s pin=%d, out: port=%s pin=%d)",
-		gpio_direct_in.port->name, gpio_direct_in.pin, gpio_direct_out.port->name, gpio_direct_out.pin);
+	LOG_INF("GPIO1 driver callback ready (raw transfer, in pin=%d, out pin=%d)",
+		gpio_direct_in.pin, gpio_direct_out.pin);
 	return 0;
 }
 
