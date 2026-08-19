@@ -42,10 +42,6 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 #define ADC3_NODE DT_NODELABEL(adc3)
 #endif // CONFIG_ADC
 
-#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_hal_in_gpios)
-static const struct gpio_dt_spec gpio_hal_in = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_hal_in_gpios);
-static const struct gpio_dt_spec gpio_hal_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_hal_out_gpios);
-#endif // gpio_hal_in_gpios
 #if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
 static const struct gpio_dt_spec gpio_direct_button_in = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios);
 static const struct gpio_dt_spec gpio_direct_led_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_led_out_gpios);
@@ -70,10 +66,6 @@ static const struct device *const adc1_dev = DEVICE_DT_GET(ADC1_NODE);
 static const struct device *const adc2_dev = DEVICE_DT_GET(ADC2_NODE);
 static const struct device *const adc3_dev = DEVICE_DT_GET(ADC3_NODE);
 #endif // CONFIG_ADC
-
-#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_hal_in_gpios)
-static struct gpio_callback gpio_callback_isr_gpioHAL;
-#endif // gpio_hal_in_gpios
 
 static int init_isr_gpioDirect(void)
 {
@@ -141,63 +133,61 @@ isrGpioHAL
 
 Interrupt Service Routine (ISR) using the zephyr HAL
 */
-#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_hal_in_gpios)
 static void callback_isr_gpioHAL(const struct device *port, struct gpio_callback *cb, uint32_t pins)
 {
 	ARG_UNUSED(port);
 	ARG_UNUSED(cb);
 	ARG_UNUSED(pins);
 
-	int in_val = gpio_pin_get_dt(&gpio_hal_in);
-	if (in_val >= 0) {
-		(void)gpio_pin_set_dt(&gpio_hal_out, in_val > 0);
-	}
+	LOG_ERR("callback_isr_gpioHAL");
+
+	int in_val = gpio_pin_get_dt(&gpio_direct_in);
+	(void)gpio_pin_set_dt(&gpio_direct_out, in_val > 0);
 }
 
 static int init_isr_gpioHAL(void)
 {
 	int ret;
 
-	if (!device_is_ready(gpio_hal_in.port)) {
+	if (!device_is_ready(gpio_direct_in.port)) {
 		LOG_ERR("GPIO input device not ready");
 		return -ENODEV;
 	}
 
-	if (!device_is_ready(gpio_hal_out.port)) {
+	if (!device_is_ready(gpio_direct_out.port)) {
 		LOG_ERR("GPIO output device not ready");
 		return -ENODEV;
 	}
 
-	ret = gpio_pin_configure_dt(&gpio_hal_in, GPIO_INPUT);
+	ret = gpio_pin_configure_dt(&gpio_direct_in, GPIO_INPUT);
 	if (ret != 0) {
 		LOG_ERR("gpio_hal_in configure failed: %d", ret);
 		return ret;
 	}
 
-	ret = gpio_pin_configure_dt(&gpio_hal_out, GPIO_OUTPUT_INACTIVE);
+	ret = gpio_pin_configure_dt(&gpio_direct_out, GPIO_OUTPUT_INACTIVE);
 	if (ret != 0) {
 		LOG_ERR("gpio_hal_out configure failed: %d", ret);
 		return ret;
 	}
 
-	ret = gpio_pin_interrupt_configure_dt(&gpio_hal_in, GPIO_INT_EDGE_BOTH);
+	ret = gpio_pin_interrupt_configure_dt(&gpio_direct_in, GPIO_INT_EDGE_BOTH);
 	if (ret != 0) {
-		LOG_ERR("gpio_hal_in irq configure failed: %d", ret);
+		LOG_ERR("gpio_direct_in irq configure failed: %d", ret);
 		return ret;
 	}
 
-	gpio_init_callback(&gpio_callback_isr_gpioHAL, callback_isr_gpioHAL, BIT(gpio_hal_in.pin));
-	ret = gpio_add_callback(gpio_hal_in.port, &gpio_callback_isr_gpioHAL);
+	gpio_init_callback(&gpio_callback_isr_gpioHAL, callback_isr_gpioHAL, BIT(gpio_direct_in.pin));
+	ret = gpio_add_callback(gpio_direct_in.port, &gpio_callback_isr_gpioHAL);
 	if (ret != 0) {
-		LOG_ERR("gpio_hal_in add callback failed: %d", ret);
+		LOG_ERR("gpio_direct_in add callback failed: %d", ret);
 		return ret;
 	}
 
 	LOG_INF("ISR_GPIO_HAL ready (in: port=%s pin=%d, out: port=%s pin=%d)",
-		gpio_hal_in.port->name, gpio_hal_in.pin, gpio_hal_out.port->name, gpio_hal_out.pin);
+		gpio_direct_in.port->name, gpio_direct_in.pin, gpio_direct_out.port->name, gpio_direct_out.pin);
 	return 0;
 }
-#endif // gpio_hal_in_gpios
 
 #if DT_NODE_EXISTS(LED1GREEN_NODE)
 static void blink_led1green(void *arg1, void *arg2, void *arg3)
@@ -208,12 +198,10 @@ static void blink_led1green(void *arg1, void *arg2, void *arg3)
 
 	while (1) {
 		int in_val = gpio_pin_get_dt(&gpio_direct_in);
-		if (in_val >= 0) {
-			(void)gpio_pin_set_dt(&gpio_led1green, in_val > 0);
-		}
+		(void)gpio_pin_set_dt(&gpio_led1red, in_val > 0);
 
+		(void)gpio_pin_toggle_dt(&gpio_led1green);
 		(void)gpio_pin_toggle_dt(&gpio_led2green);
-		(void)gpio_pin_toggle_dt(&gpio_led2red);
 		k_sleep(K_MSEC(100));
 	}
 }
@@ -361,12 +349,10 @@ int main(void)
 	}
 
 
-#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_hal_in_gpios)
 	ret = init_isr_gpioHAL();
 	if (ret != 0) {
 		return ret;
 	}
-#endif // gpio_hal_in_gpios
 
 #if DT_NODE_EXISTS(LED1GREEN_NODE)
 	ret = init_led1green_blink();
