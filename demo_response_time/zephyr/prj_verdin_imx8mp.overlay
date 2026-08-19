@@ -44,7 +44,7 @@
 		};
 
 		/* SODIMM 58 - USER_LED_2_GREEN */
-		led3green {
+		led2green {
 			label = "USER_LED_2_GREEN";
 			gpios = <&gpio3 7 GPIO_ACTIVE_HIGH>;
 		};

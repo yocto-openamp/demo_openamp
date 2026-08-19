@@ -7,7 +7,6 @@
 #include <zephyr/drivers/adc.h>
 #endif // CONFIG_ADC
 #include <zephyr/logging/log.h>
-#include <zephyr/irq.h>
 #include <math.h>
 
 #ifndef M_PI
@@ -27,7 +26,10 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 #endif
 
 #define SW0_NODE DT_ALIAS(sw0)
-#define LED_2_RED_NODE DT_PATH(leds, led2red)
+#define LED1GREEN_NODE DT_PATH(leds, led1green)
+#define LED2GREEN_NODE DT_PATH(leds, led2green)
+#define LED1RED_NODE DT_PATH(leds, led1red)
+#define LED2RED_NODE DT_PATH(leds, led2red)
 
 #if !DT_NODE_HAS_STATUS(SW0_NODE, okay)
 #error "Missing sw0 alias in board devicetree"
@@ -40,26 +42,6 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 #define ADC3_NODE DT_NODELABEL(adc3)
 #endif // CONFIG_ADC
 
-#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
-#define EXTI_GPIO_DIRECT_BUTTON_IN_LINE BIT(gpio_direct_button_in.pin)
-#endif // gpio_direct_button_in_gpios
-#define EXTI_GPIO_DIRECT_IN_LINE BIT(gpio_direct_in.pin)
-#define EXTI_DIRECT_LINES (EXTI_GPIO_DIRECT_BUTTON_IN_LINE | EXTI_GPIO_DIRECT_IN_LINE)
-
-#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
-#define GPIO_DIRECT_BUTTON_IN ((GPIO_TypeDef *)DT_REG_ADDR(DT_GPIO_CTLR(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)))
-#define GPIO_DIRECT_LED_OUT ((GPIO_TypeDef *)DT_REG_ADDR(DT_GPIO_CTLR(ZEPHYR_USER_NODE, gpio_direct_led_out_gpios)))
-#endif // gpio_direct_button_in_gpios
-#define GPIO_DIRECT_IN ((GPIO_TypeDef *)DT_REG_ADDR(DT_GPIO_CTLR(ZEPHYR_USER_NODE, gpio_direct_in_gpios)))
-#define GPIO_DIRECT_OUT ((GPIO_TypeDef *)DT_REG_ADDR(DT_GPIO_CTLR(ZEPHYR_USER_NODE, gpio_direct_out_gpios)))
-
-#define GPIO_DIRECT_IRQ_PRIO 0
-#if defined(CONFIG_ZERO_LATENCY_IRQS)
-#define GPIO_DIRECT_IRQ_FLAGS IRQ_ZERO_LATENCY
-#else
-#define GPIO_DIRECT_IRQ_FLAGS 0
-#endif
-
 #if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_hal_in_gpios)
 static const struct gpio_dt_spec gpio_hal_in = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_hal_in_gpios);
 static const struct gpio_dt_spec gpio_hal_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_hal_out_gpios);
@@ -71,8 +53,11 @@ static const struct gpio_dt_spec gpio_direct_led_out = GPIO_DT_SPEC_GET(ZEPHYR_U
 static const struct gpio_dt_spec gpio_direct_in = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_in_gpios);
 static const struct gpio_dt_spec gpio_direct_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_out_gpios);
 
-#if DT_NODE_EXISTS(LED_2_RED_NODE)
-static const struct gpio_dt_spec gpio_led2red = GPIO_DT_SPEC_GET(LED_2_RED_NODE, gpios);
+#if DT_NODE_EXISTS(LED1GREEN_NODE)
+static const struct gpio_dt_spec gpio_led1green = GPIO_DT_SPEC_GET(LED1GREEN_NODE, gpios);
+static const struct gpio_dt_spec gpio_led2green = GPIO_DT_SPEC_GET(LED2GREEN_NODE, gpios);
+static const struct gpio_dt_spec gpio_led1red = GPIO_DT_SPEC_GET(LED1RED_NODE, gpios);
+static const struct gpio_dt_spec gpio_led2red = GPIO_DT_SPEC_GET(LED2RED_NODE, gpios);
 #define LED_BLINK_STACK_SIZE 512
 #define LED_BLINK_PRIORITY 5
 K_THREAD_STACK_DEFINE(led_blink_stack, LED_BLINK_STACK_SIZE);
@@ -90,87 +75,38 @@ static const struct device *const adc3_dev = DEVICE_DT_GET(ADC3_NODE);
 static struct gpio_callback gpio_callback_isr_gpioHAL;
 #endif // gpio_hal_in_gpios
 
-/*
-ISR_GPIO_DIRECT
-
-The Direct Interrupt Service Routine (ISR) bypasses the zephyr HAL
-*/
-
-#ifdef EXTI
-ISR_DIRECT_DECLARE(exti15_10_direct_isr)
-{
-	uint32_t pending = EXTI->PR & EXTI_DIRECT_LINES;
-
-	if (pending == 0U) {
-		return 0;
-	}
-
-	/* Clear pending bits first to minimize IRQ service latency. */
-	EXTI->PR = pending;
-
-	if ((pending & EXTI_GPIO_DIRECT_IN_LINE) != 0U) {
-		if ((GPIO_DIRECT_IN->IDR & BIT(gpio_direct_in.pin)) != 0U) {
-			GPIO_DIRECT_OUT->BSRR = BIT(gpio_direct_out.pin);
-		} else {
-			GPIO_DIRECT_OUT->BSRR = BIT(gpio_direct_out.pin + 16);
-		}
-	}
-
-#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
-if ((pending & EXTI_GPIO_DIRECT_BUTTON_IN_LINE) != 0U) {
-	if ((GPIO_DIRECT_BUTTON_IN->IDR & BIT(gpio_direct_button_in.pin)) != 0U) {
-		GPIO_DIRECT_LED_OUT->BSRR = BIT(gpio_direct_led_out.pin);
-	} else {
-		GPIO_DIRECT_LED_OUT->BSRR = BIT(gpio_direct_led_out.pin + 16);
-	}
-}
-#endif // gpio_direct_button_in_gpios
-
-	return 0;
-}
-#endif // EXTI
-
 static int init_isr_gpioDirect(void)
 {
 	int ret;
 
 #if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
-/*
-gpio_direct_button_in
-gpio_direct_led_out
-*/
-if (!device_is_ready(gpio_direct_button_in.port)) {
-	LOG_ERR("button input device not ready");
-	return -ENODEV;
-}
+	if (!device_is_ready(gpio_direct_button_in.port)) {
+		LOG_ERR("button input device not ready");
+		return -ENODEV;
+	}
 
-if (!device_is_ready(gpio_direct_led_out.port)) {
-	LOG_ERR("led0 output device not ready");
-	return -ENODEV;
-}
+	if (!device_is_ready(gpio_direct_led_out.port)) {
+		LOG_ERR("led0 output device not ready");
+		return -ENODEV;
+	}
 
-ret = gpio_pin_configure_dt(&gpio_direct_led_out, GPIO_OUTPUT_INACTIVE);
-if (ret != 0) {
-	LOG_ERR("led0 configure failed: %d", ret);
-	return ret;
-}
+	ret = gpio_pin_configure_dt(&gpio_direct_led_out, GPIO_OUTPUT_INACTIVE);
+	if (ret != 0) {
+		LOG_ERR("led0 configure failed: %d", ret);
+		return ret;
+	}
+
+	ret = gpio_pin_configure_dt(&gpio_direct_button_in, GPIO_INPUT);
+	if (ret != 0) {
+		LOG_ERR("gpio_direct_button_in configure failed: %d", ret);
+		return ret;
+	}
+
+	LOG_INF("GPIO button ready (in: port=%s pin=%d, out: port=%s pin=%d)",
+		gpio_direct_button_in.port->name, gpio_direct_button_in.pin,
+		gpio_direct_led_out.port->name, gpio_direct_led_out.pin);
 #endif // gpio_direct_button_in_gpios
 
-#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
-ret = gpio_pin_configure_dt(&gpio_direct_button_in, GPIO_INPUT);
-if (ret != 0) {
-	LOG_ERR("gpio_direct_button_in configure failed: %d", ret);
-	return ret;
-}
-
-LOG_INF("isr_button_led ready (in: port=%s pin=%d, out: port=%s pin=%d)",
-	gpio_direct_button_in.port->name, gpio_direct_button_in.pin, gpio_direct_led_out.port->name, gpio_direct_led_out.pin);
-#endif // gpio_direct_button_in_gpios
-
-    /*
-	gpio_direct_in
-	gpio_direct_out
-	*/
 	if (!device_is_ready(gpio_direct_in.port)) {
 		LOG_ERR("GPIO_DIRECT_IN device not ready");
 		return -ENODEV;
@@ -193,28 +129,10 @@ LOG_INF("isr_button_led ready (in: port=%s pin=%d, out: port=%s pin=%d)",
 		return ret;
 	}
 
-#ifdef EXTI
-	/* PC13 (button) and PF15 (GPIO_DIRECT_IN) share EXTI15_10. Handle both directly. */
-	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
-	SYSCFG->EXTICR[3] &= ~(SYSCFG_EXTICR4_EXTI13 | SYSCFG_EXTICR4_EXTI15);
-	SYSCFG->EXTICR[3] |= SYSCFG_EXTICR4_EXTI13_PC | SYSCFG_EXTICR4_EXTI15_PF;
-
-	EXTI->IMR |= EXTI_DIRECT_LINES;
-	EXTI->RTSR |= EXTI_DIRECT_LINES;
-	EXTI->FTSR |= EXTI_DIRECT_LINES;
-	EXTI->PR = EXTI_DIRECT_LINES;
-
-	IRQ_DIRECT_CONNECT(EXTI15_10_IRQn, GPIO_DIRECT_IRQ_PRIO,
-			exti15_10_direct_isr, GPIO_DIRECT_IRQ_FLAGS);
-	irq_enable(EXTI15_10_IRQn);
-
-	/* EXTI15_10 is serviced by the direct IRQ handler for low-latency comparison. */
-#endif // EXTI
-
-	LOG_INF("ISR_GPIO_DIRECT ready (in: port=%s pin=%d, out: port=%s pin=%d)",
+	LOG_INF("GPIO_DIRECT ready (in: port=%s pin=%d, out: port=%s pin=%d)",
 		gpio_direct_in.port->name, gpio_direct_in.pin,
 		gpio_direct_out.port->name, gpio_direct_out.pin);
-	
+
 	return 0;
 }
 
@@ -281,37 +199,76 @@ static int init_isr_gpioHAL(void)
 }
 #endif // gpio_hal_in_gpios
 
-#if DT_NODE_EXISTS(LED_2_RED_NODE)
-static void blink_led2red(void *arg1, void *arg2, void *arg3)
+#if DT_NODE_EXISTS(LED1GREEN_NODE)
+static void blink_led1green(void *arg1, void *arg2, void *arg3)
 {
 	ARG_UNUSED(arg1);
 	ARG_UNUSED(arg2);
 	ARG_UNUSED(arg3);
 
 	while (1) {
+		int in_val = gpio_pin_get_dt(&gpio_direct_in);
+		if (in_val >= 0) {
+			(void)gpio_pin_set_dt(&gpio_led1green, in_val > 0);
+		}
+
+		(void)gpio_pin_toggle_dt(&gpio_led2green);
 		(void)gpio_pin_toggle_dt(&gpio_led2red);
-		k_sleep(K_MSEC(500));
+		k_sleep(K_MSEC(100));
 	}
 }
 
-static int init_led2red_blink(void)
+static int init_led1green_blink(void)
 {
-	if (!device_is_ready(gpio_led2red.port)) {
-		LOG_ERR("LED 2 device not ready");
+	if (!device_is_ready(gpio_led1green.port)) {
+		LOG_ERR("LED 1 green device not ready");
 		return -ENODEV;
 	}
 
-	int ret = gpio_pin_configure_dt(&gpio_led2red, GPIO_OUTPUT_INACTIVE);
+	if (!device_is_ready(gpio_led2green.port)) {
+		LOG_ERR("LED 2 green device not ready");
+		return -ENODEV;
+	}
+
+    if (!device_is_ready(gpio_led1red.port)) {
+		LOG_ERR("LED 1 red device not ready");
+		return -ENODEV;
+	}
+
+	if (!device_is_ready(gpio_led2red.port)) {
+		LOG_ERR("LED 2 red device not ready");
+		return -ENODEV;
+	}
+
+	int ret = gpio_pin_configure_dt(&gpio_led1green, GPIO_OUTPUT_INACTIVE);
 	if (ret != 0) {
-		LOG_ERR("LED 2 configure failed: %d", ret);
+		LOG_ERR("LED 1 green configure failed: %d", ret);
+		return ret;
+	}
+
+	ret = gpio_pin_configure_dt(&gpio_led2green, GPIO_OUTPUT_INACTIVE);
+	if (ret != 0) {
+		LOG_ERR("LED 2 green configure failed: %d", ret);
+		return ret;
+	}
+
+	ret = gpio_pin_configure_dt(&gpio_led1red, GPIO_OUTPUT_INACTIVE);
+	if (ret != 0) {
+		LOG_ERR("LED 1 red configure failed: %d", ret);
+		return ret;
+	}
+
+	ret = gpio_pin_configure_dt(&gpio_led2red, GPIO_OUTPUT_INACTIVE);
+	if (ret != 0) {
+		LOG_ERR("LED 2 red configure failed: %d", ret);
 		return ret;
 	}
 
 	k_thread_create(&led_blink_thread, led_blink_stack,
-		K_THREAD_STACK_SIZEOF(led_blink_stack), blink_led2red, NULL, NULL, NULL,
+		K_THREAD_STACK_SIZEOF(led_blink_stack), blink_led1green, NULL, NULL, NULL,
 		LED_BLINK_PRIORITY, 0, K_NO_WAIT);
 
-	LOG_INF("LED 2 blink thread ready (interval: 500 ms)");
+	LOG_INF("LED 1 green blink thread ready (interval: 500 ms)");
 	return 0;
 }
 #endif
@@ -411,8 +368,8 @@ int main(void)
 	}
 #endif // gpio_hal_in_gpios
 
-#if DT_NODE_EXISTS(LED_2_RED_NODE)
-	ret = init_led2red_blink();
+#if DT_NODE_EXISTS(LED1GREEN_NODE)
+	ret = init_led1green_blink();
 	if (ret != 0) {
 		return ret;
 	}
