@@ -19,7 +19,8 @@ RUN apk add --no-cache \
         xz \
         file \
         make \
-        gcompat
+        gcompat \
+        openocd
 
 # UV and python
 ENV UV_INSTALL_DIR=/usr/local/bin
