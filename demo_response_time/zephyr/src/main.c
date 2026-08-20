@@ -2,16 +2,7 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
-#if defined(CONFIG_ADC)
-#include <zephyr/drivers/dac.h>
-#include <zephyr/drivers/adc.h>
-#endif // CONFIG_ADC
 #include <zephyr/logging/log.h>
-#include <math.h>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
-#endif
 
 LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 
@@ -25,53 +16,20 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 #error "Missing gpio-direct-out-gpios in zephyr,user devicetree node"
 #endif
 
-#define SW0_NODE DT_ALIAS(sw0)
-#define LED1GREEN_NODE DT_PATH(leds, led1green)
-#define LED2GREEN_NODE DT_PATH(leds, led2green)
-#define LED1RED_NODE DT_PATH(leds, led1red)
-#define LED2RED_NODE DT_PATH(leds, led2red)
+#define LED0_NODE DT_ALIAS(led0)
 
-#if !DT_NODE_HAS_STATUS(SW0_NODE, okay)
-#error "Missing sw0 alias in board devicetree"
-#endif
-
-#if defined(CONFIG_ADC)
-#define DAC1_NODE DT_NODELABEL(dac1)
-#define ADC1_NODE DT_NODELABEL(adc1)
-#define ADC2_NODE DT_NODELABEL(adc2)
-#define ADC3_NODE DT_NODELABEL(adc3)
-#endif // CONFIG_ADC
-
-#if DT_NODE_HAS_PROP(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios)
-static const struct gpio_dt_spec gpio_direct_button_in = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_button_in_gpios);
-static const struct gpio_dt_spec gpio_direct_led_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_led_out_gpios);
-#endif // gpio_direct_button_in_gpios
 static const struct gpio_dt_spec gpio_direct_in = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_in_gpios);
 static const struct gpio_dt_spec gpio_direct_out = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, gpio_direct_out_gpios);
 
-#if DT_NODE_EXISTS(LED1GREEN_NODE)
-static const struct gpio_dt_spec gpio_led1green = GPIO_DT_SPEC_GET(LED1GREEN_NODE, gpios);
-static const struct gpio_dt_spec gpio_led2green = GPIO_DT_SPEC_GET(LED2GREEN_NODE, gpios);
-static const struct gpio_dt_spec gpio_led1red = GPIO_DT_SPEC_GET(LED1RED_NODE, gpios);
-static const struct gpio_dt_spec gpio_led2red = GPIO_DT_SPEC_GET(LED2RED_NODE, gpios);
+static const struct gpio_dt_spec gpio_led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 #define LED_BLINK_STACK_SIZE 512
 #define LED_BLINK_PRIORITY 5
 K_THREAD_STACK_DEFINE(led_blink_stack, LED_BLINK_STACK_SIZE);
 static struct k_thread led_blink_thread;
-#endif
-
-#if defined(CONFIG_ADC)
-static const struct device *const dac1_dev = DEVICE_DT_GET(DAC1_NODE);
-static const struct device *const adc1_dev = DEVICE_DT_GET(ADC1_NODE);
-static const struct device *const adc2_dev = DEVICE_DT_GET(ADC2_NODE);
-static const struct device *const adc3_dev = DEVICE_DT_GET(ADC3_NODE);
-#endif // CONFIG_ADC
 
 static struct gpio_callback gpio_callback_isr_gpioHAL;
 
 /*
-isrGpioHAL
-
 Interrupt Service Routine (ISR) using the zephyr HAL
 */
 static void callback_isr_gpioHAL(const struct device *port, struct gpio_callback *cb, uint32_t pins)
@@ -128,7 +86,6 @@ static int init_isr_gpioHAL(void)
 	return 0;
 }
 
-#if DT_NODE_EXISTS(LED1GREEN_NODE)
 static void blink_led1green(void *arg1, void *arg2, void *arg3)
 {
 	ARG_UNUSED(arg1);
@@ -136,58 +93,21 @@ static void blink_led1green(void *arg1, void *arg2, void *arg3)
 	ARG_UNUSED(arg3);
 
 	while (1) {
-		// int in_val = gpio_pin_get_dt(&gpio_direct_in);
-		// (void)gpio_pin_set_dt(&gpio_led1red, in_val > 0);
-
-		(void)gpio_pin_toggle_dt(&gpio_led1green);
-		(void)gpio_pin_toggle_dt(&gpio_led2green);
-		k_sleep(K_MSEC(100));
+		(void)gpio_pin_toggle_dt(&gpio_led0);
+		k_sleep(K_MSEC(500));
 	}
 }
 
-static int init_led1green_blink(void)
+static int init_led0_blink(void)
 {
-	if (!device_is_ready(gpio_led1green.port)) {
-		LOG_ERR("LED 1 green device not ready");
+	if (!device_is_ready(gpio_led0.port)) {
+		LOG_ERR("LED 0 device not ready");
 		return -ENODEV;
 	}
 
-	if (!device_is_ready(gpio_led2green.port)) {
-		LOG_ERR("LED 2 green device not ready");
-		return -ENODEV;
-	}
-
-    if (!device_is_ready(gpio_led1red.port)) {
-		LOG_ERR("LED 1 red device not ready");
-		return -ENODEV;
-	}
-
-	if (!device_is_ready(gpio_led2red.port)) {
-		LOG_ERR("LED 2 red device not ready");
-		return -ENODEV;
-	}
-
-	int ret = gpio_pin_configure_dt(&gpio_led1green, GPIO_OUTPUT_INACTIVE);
+	int ret = gpio_pin_configure_dt(&gpio_led0, GPIO_OUTPUT_INACTIVE);
 	if (ret != 0) {
-		LOG_ERR("LED 1 green configure failed: %d", ret);
-		return ret;
-	}
-
-	ret = gpio_pin_configure_dt(&gpio_led2green, GPIO_OUTPUT_INACTIVE);
-	if (ret != 0) {
-		LOG_ERR("LED 2 green configure failed: %d", ret);
-		return ret;
-	}
-
-	ret = gpio_pin_configure_dt(&gpio_led1red, GPIO_OUTPUT_INACTIVE);
-	if (ret != 0) {
-		LOG_ERR("LED 1 red configure failed: %d", ret);
-		return ret;
-	}
-
-	ret = gpio_pin_configure_dt(&gpio_led2red, GPIO_OUTPUT_INACTIVE);
-	if (ret != 0) {
-		LOG_ERR("LED 2 red configure failed: %d", ret);
+		LOG_ERR("LED 0 configure failed: %d", ret);
 		return ret;
 	}
 
@@ -195,90 +115,9 @@ static int init_led1green_blink(void)
 		K_THREAD_STACK_SIZEOF(led_blink_stack), blink_led1green, NULL, NULL, NULL,
 		LED_BLINK_PRIORITY, 0, K_NO_WAIT);
 
-	LOG_INF("LED 1 green blink thread ready (interval: 500 ms)");
+	LOG_INF("LED 0 blink thread ready (interval: 500 ms)");
 	return 0;
 }
-#endif
-
-/*
-DAC/ADC
-*/
-#if defined(CONFIG_ADC)
-static void init_adc_dac(void)
-{
-	if (device_is_ready(dac1_dev)) {
-		struct dac_channel_cfg dac_cfg = {
-			.channel_id = 1,
-			.resolution = 12,
-		};
-		int ret = dac_channel_setup(dac1_dev, &dac_cfg);
-		if (ret == 0) {
-			LOG_INF("DAC1 channel 1 configured");
-		} else {
-			LOG_WRN("DAC1 channel setup failed: %d", ret);
-		}
-	} else {
-		LOG_WRN("DAC1 not ready");
-	}
-
-	if (device_is_ready(adc1_dev)) {
-		struct adc_channel_cfg adc_cfg = {
-			.channel_id = 3,
-			.gain = ADC_GAIN_1,
-			.reference = ADC_REF_INTERNAL,
-			.acquisition_time = ADC_ACQ_TIME_DEFAULT,
-		};
-		int ret = adc_channel_setup(adc1_dev, &adc_cfg);
-		if (ret == 0) {
-			LOG_INF("ADC1 channel 3 configured");
-		} else {
-			LOG_WRN("ADC1 channel setup failed: %d", ret);
-		}
-	} else {
-		LOG_WRN("ADC1 not ready");
-	}
-
-	LOG_INF("ADC readiness: adc1=%d adc2=%d adc3=%d",
-		device_is_ready(adc1_dev),
-		device_is_ready(adc2_dev),
-		device_is_ready(adc3_dev));
-}
-
-static void endless_loop_adc_dac(void)
-{
-	uint16_t dac2_value = 0;
-	float angle = 0.0;
-
-	while (1) {
-        // DAC1: Read ADC1 and write to DAC1
-		if (device_is_ready(dac1_dev) && device_is_ready(adc1_dev)) {
-			uint16_t adc1_value;
-			struct adc_sequence seq = {
-				.channels = BIT(3),
-				.buffer = &adc1_value,
-				.buffer_size = sizeof(adc1_value),
-				.resolution = 12,
-			};
-			// Read ADC1
-			if (adc_read(adc1_dev, &seq) == 0) {
-				// Write ADC1 value to DAC1
-				(void)dac_write_value(dac1_dev, 1, adc1_value);
-			}
-		}
-
-        // DAC2: calculate a sin and write it to DAC2 as fast as possible.
-		if (device_is_ready(dac1_dev)) {
-			// Calculate sine wave value for DAC2
-			dac2_value = (uint16_t)((sinf(angle) + 1.0f) * 2047.5f); // Scale to 12-bit range
-			(void)dac_write_value(dac1_dev, 2, dac2_value);
-			angle += 0.1f; // Increment angle
-			if (angle >= 2 * M_PI) {
-				angle -= 2 * M_PI;
-			}
-		}
-	}
-}
-#endif // CONFIG_ADC
 
 int main(void)
 {
@@ -287,16 +126,11 @@ int main(void)
 		return ret;
 	}
 
-#if DT_NODE_EXISTS(LED1GREEN_NODE)
-	ret = init_led1green_blink();
+#if DT_NODE_EXISTS(LED0_NODE)
+	ret = init_led0_blink();
 	if (ret != 0) {
 		return ret;
 	}
 #endif
 
-#if defined(CONFIG_ADC)
-	init_adc_dac();
-
-	endless_loop_adc_dac();
-#endif // CONFIG_ADC
 }

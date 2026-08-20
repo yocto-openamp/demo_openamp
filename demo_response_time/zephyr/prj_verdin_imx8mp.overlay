@@ -8,11 +8,6 @@
 	zephyr,user {
 		gpio-direct-in-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
 		gpio-direct-out-gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;
-
-		/* nucleo_f722ze.dts: sw0 = &user_button */
-		/* gpio-direct-button-in-gpios = <&gpio3 14 GPIO_ACTIVE_HIGH>; */
-		/* led1 = &blue_led */
-		/* gpio-direct-led-out-gpios = <&gpio3 13 GPIO_ACTIVE_HIGH>; */
 	};
 };
 
@@ -20,49 +15,33 @@
 	leds {
 		compatible = "gpio-leds";
 
-		user_led: user_led {
-			label = "User LED";
-			gpios = <&gpio3 5 GPIO_ACTIVE_HIGH>;
-		};
-
 		/* SODIMM 52 - USER_LED_1_RED */
-		led1red {
+		led1red: led1red {
 			label = "USER_LED_1_RED";
 			gpios = <&gpio3 0 GPIO_ACTIVE_HIGH>;
 		};
 
 		/* SODIMM 54 - USER_LED_1_GREEN */
-		led1green {
+		led1green: led1green {
 			label = "USER_LED_1_GREEN";
 			gpios = <&gpio3 1 GPIO_ACTIVE_HIGH>;
 		};
 
 		/* SODIMM 56 - USER_LED_2_RED */
-		led2red {
+		led2red: led2red {
 			label = "USER_LED_2_RED";
 			gpios = <&gpio3 6 GPIO_ACTIVE_HIGH>;
 		};
 
 		/* SODIMM 58 - USER_LED_2_GREEN */
-		led2green {
+		led2green: led2green {
 			label = "USER_LED_2_GREEN";
 			gpios = <&gpio3 7 GPIO_ACTIVE_HIGH>;
 		};
 	};
 
-	buttons {
-		compatible = "gpio-keys";
-
-		user_button: user_button {
-			label = "User Button";
-			gpios = <&gpio3 12 GPIO_ACTIVE_LOW>;
-			zephyr,code = <INPUT_KEY_0>;
-		};
-	};
-
 	aliases {
-		led0 = &user_led;
-		sw0 = &user_button;
+		led0 = &led1green;
 	};
 };
 
@@ -70,22 +49,3 @@
 	status = "okay";
 	current-speed = <115200>;
 };
-
-/* Uncomment if UART4 pins are not already configured by the board DTS.
-
-&pinctrl {
-	uart4_default: uart4_default {
-		group1 {
-			fsl,pins = <
-				// MX8MP_IOMUXC_<PAD>__UART4_DCE_RX 0x140
-				// MX8MP_IOMUXC_<PAD>__UART4_DCE_TX 0x140
-			>;
-		};
-	};
-};
-
-&uart4 {
-	pinctrl-0 = <&uart4_default>;
-	pinctrl-names = "default";
-};
-*/
