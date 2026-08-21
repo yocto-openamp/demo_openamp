@@ -12,10 +12,10 @@ modprobe rpmsg_char
 # modprobe -r imx_rpmsg_tty 2>/dev/null || true
 # modprobe -r rpmsg-client-sample 2>/dev/null || true
 
-mkdir -p /root/firmware
+mkdir -p /home/torizon/firmware
 echo stop > /sys/class/remoteproc/remoteproc0/state 2>/dev/null || true
-echo /root/firmware > /sys/module/firmware_class/parameters/path
-cp ./build/zephyr/demo_rpmsg.elf /root/firmware
+echo /home/torizon/firmware > /sys/module/firmware_class/parameters/path
+cp ./build/zephyr/demo_rpmsg.elf /home/torizon/firmware
 echo demo_rpmsg.elf > /sys/class/remoteproc/remoteproc0/firmware
 echo start > /sys/class/remoteproc/remoteproc0/state
 

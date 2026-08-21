@@ -3,12 +3,15 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import fcntl
+import logging
 import os
 import pathlib
 import struct
 import time
 import types
 import typing
+
+logger = logging.getLogger(__file__)
 
 
 def ioc(direction: int, ioctl_type: int, number: int, size: int) -> int:
@@ -40,15 +43,35 @@ class Rpmsg:
         self._stack: contextlib.ExitStack | None = None
 
     async def __aenter__(self) -> Rpmsg:
-        self.channel, destination = await self._wait_for_channel()
+        self.channel = await self._wait_for_channel()
         self.control = self._find_control_device()
         previous_endpoints = self._endpoint_class_devices()
         stack = contextlib.ExitStack()
         try:
             control_file = stack.enter_context(self.control.open("rb+", buffering=0))
+            destination = self._read_int(self.channel / "dst")
             self.endpoint = await self._create_endpoint(
-                control_file, destination, previous_endpoints
+                control_file,
+                destination,
+                previous_endpoints,
             )
+
+            async def wait_for_udev_rule() -> None:
+                timout_s = 1.0
+                start_s = time.monotonic()
+                while True:
+                    duration_s = time.monotonic() - start_s
+                    if duration_s > timout_s:
+                        raise ValueError(f"Timeout while waiting for {self.endpoint}")
+                    endpoint_readable = os.access(self.endpoint, os.R_OK)
+                    if endpoint_readable:
+                        logger.debug(
+                            f"Waiting {duration_s:0.3f}s for {self.endpoint} to become readable"
+                        )
+                        return
+                    await asyncio.sleep(0.1)
+
+            await wait_for_udev_rule()
             self._endpoint_file = stack.enter_context(
                 self.endpoint.open("rb+", buffering=0)
             )
@@ -101,14 +124,13 @@ class Rpmsg:
         finally:
             remove_handler(file_descriptor)
 
-    async def _wait_for_channel(self) -> tuple[pathlib.Path, int]:
-
+    async def _wait_for_channel(self) -> pathlib.Path:
         deadline = time.monotonic() + self.timeout
         while time.monotonic() < deadline:
             for device in self.RPMSG_BUS_DEVICES.glob("*"):
                 try:
                     if (device / "name").read_text().strip() == self.channel_name:
-                        return device, self._read_int(device / "dst")
+                        return device
                 except (FileNotFoundError, ValueError):
                     continue
             await asyncio.sleep(0.1)
