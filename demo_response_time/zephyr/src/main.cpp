@@ -112,7 +112,7 @@ static int init_led0_blink(void)
 	}
 
 	k_thread_create(&led_blink_thread, led_blink_stack,
-		K_THREAD_STACK_SIZEOF(led_blink_stack), blink_led1green, NULL, NULL, NULL,
+		K_THREAD_STACK_SIZEOF(led_blink_stack), blink_led1green, nullptr, nullptr, nullptr,
 		LED_BLINK_PRIORITY, 0, K_NO_WAIT);
 
 	LOG_INF("LED 0 blink thread ready (interval: 500 ms)");
@@ -133,4 +133,5 @@ int main(void)
 	}
 #endif
 
+	return 0;
 }
