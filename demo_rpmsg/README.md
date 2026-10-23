@@ -6,10 +6,8 @@ This demo uses a zephyr app on the M7 side and some python conde on the linux si
 ## Build and run
 
 ```bash
-cd hmp_mcuxpresso-zephyr
-
-./run_2_build_all.sh
-sudo ./run_3_start-root.sh
+./run_1_build_full.sh
+./run_2_start.sh
 ```
 
 ```bash
@@ -27,7 +25,8 @@ dmsg --follow
 
 
 ```bash
-tio --baudrate=115200 /dev/ttyUSB0
+tio --baudrate=115200 /dev/ttyUSB0 # External UART
+tio --baudrate=115200 /dev/ttymxc1 # Internal UART loopback
 
 *** Booting Zephyr OS build v4.4.0-10953-gda0718ca0d52 ***
 [00:00:00.004,000] <inf> demo_rpmsg: Starting Verdin iMX8MP OpenAMP RpMsg demo

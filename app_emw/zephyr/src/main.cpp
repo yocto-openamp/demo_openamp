@@ -3,7 +3,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(demo_rpmsg);
+LOG_MODULE_REGISTER(app_emw);
 
 #define APP_TASK_STACK_SIZE 2048
 
@@ -18,7 +18,7 @@ int echo(rpmsg::Endpoint &endpoint, const void *data, std::size_t size,
     return endpoint.send(data, size);
 }
 
-rpmsg::Endpoint endpoint{"rpmsg-demo-xyrx2", echo};
+rpmsg::Endpoint endpoint{"rpmsg-emw-xyrx2", echo};
 
 void manager(void *, void *, void *) {
     if (transport.initialize() != 0) {

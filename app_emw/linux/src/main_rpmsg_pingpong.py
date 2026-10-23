@@ -6,7 +6,7 @@ import time
 from demo_openamp.openamp.util_rpmsg import Rpmsg
 
 # This must match with the same string in main.cpp
-CHANNEL_NAME: str = "rpmsg-demo-xyrx2"
+CHANNEL_NAME: str = "rpmsg-emw-xyrx2"
 
 
 async def run_pingpong() -> None:

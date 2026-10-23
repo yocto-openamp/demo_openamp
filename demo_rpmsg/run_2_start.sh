@@ -1,4 +1,5 @@
-set -x
+set -euox pipefail
+
 
 REPO_DIR=$(dirname "$PWD")
 if [[ ! -f $REPO_DIR/PROJECT_MARKER.txt ]]; then
