@@ -34,6 +34,7 @@ RUN uv pip install --no-cache-dir west
 
 ENV WEST_NUCLEO="hal_stm32 cmsis_6"
 ENV WEST_IMX="hal_nxp open-amp libmetal"
+ENV WEST_HAL_TDK="hal_tdk"
 # ENV ZEPHYR_REV="v4.4.2"
 ENV ZEPHYR_REV="main"
 
@@ -43,7 +44,7 @@ RUN west init $ZEPHYR_TOP \
         --manifest-rev $ZEPHYR_REV \
         --clone-opt=--depth=1 \
     && cd $ZEPHYR_TOP \
-    && west update zephyr $WEST_NUCLEO $WEST_IMX \
+    && west update zephyr $WEST_NUCLEO $WEST_IMX $WEST_HAL_TDK \
     && uv pip install --no-cache-dir -r zephyr/scripts/requirements-base.txt \
     && west zephyr-export
 
