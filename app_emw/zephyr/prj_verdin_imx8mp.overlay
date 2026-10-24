@@ -4,6 +4,8 @@ hmp_mcuxpresso-zephyr/sources/rpmsg-lite/zephyr/samples/rpmsglite_pingpong/remot
 hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_evk_mimx8ml8_m7.overlay
 */
 
+#include <zephyr/dt-bindings/sensor/icm45686.h>
+
 / {
     chosen {
         zephyr,ipc_shm = &shram;
@@ -23,6 +25,19 @@ hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_
 	};
 };
 
+&pinctrl {
+    ecspi1_default: ecspi1_default {
+        group0 {
+            drive-strength = "x1";
+            pinmux = <&iomuxc_ecspi1_sclk_ecspi_sclk_ecspi1_sclk>,
+                     <&iomuxc_ecspi1_miso_ecspi_miso_ecspi1_miso>,
+                     <&iomuxc_ecspi1_mosi_ecspi_mosi_ecspi1_mosi>,
+                     <&iomuxc_ecspi1_ss0_ecspi_ss_ecspi1_ss0>;
+            slew-rate = "slow";
+        };
+    };
+};
+
 &mailbox0 {
     status = "okay";
 };
@@ -30,4 +45,20 @@ hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_
 &uart4 {
 	status = "okay";
 	current-speed = <115200>;
+};
+
+&ecspi1 {
+    status = "okay";
+    pinctrl-0 = <&ecspi1_default>;
+    pinctrl-names = "default";
+
+    icm45686: icm45686@0 {
+        compatible = "invensense,icm45686";
+        reg = <0>;
+        spi-max-frequency = <1000000>;
+        accel-pwr-mode = <ICM45686_DT_ACCEL_LN>;
+        accel-fs = <ICM45686_DT_ACCEL_FS_4>;
+        accel-odr = <ICM45686_DT_ACCEL_ODR_100>;
+        status = "okay";
+    };
 };
