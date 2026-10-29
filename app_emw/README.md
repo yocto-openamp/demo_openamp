@@ -15,6 +15,10 @@ This demo uses a zephyr app on the M7 side and some python conde on the linux si
 tio --baudrate=115200 /dev/ttyUSB0 # External UART
 tio --baudrate=115200 /dev/ttymxc1 # Internal UART loopback
 
+# or
+stty -F /dev/ttymxc1 115200 raw -echo
+cat /dev/ttymxc1 | tee /tmp/app_emw-uart.log
+
 *** Booting Zephyr OS build 4.4.99 ***
 [00:00:00.003,000] <inf> app_emw: Starting Verdin iMX8MP OpenAMP RpMsg demo
 [00:00:00.516,000] <inf> app_emw: Linux RPMsg endpoint is ready

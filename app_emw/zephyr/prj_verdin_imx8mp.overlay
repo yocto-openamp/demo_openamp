@@ -5,6 +5,7 @@ hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_
 */
 
 #include <zephyr/dt-bindings/sensor/icm45686.h>
+#include <zephyr/dt-bindings/gpio/gpio.h>
 
 / {
     chosen {
@@ -31,8 +32,7 @@ hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_
             drive-strength = "x1";
             pinmux = <&iomuxc_ecspi1_sclk_ecspi_sclk_ecspi1_sclk>,
                      <&iomuxc_ecspi1_miso_ecspi_miso_ecspi1_miso>,
-                     <&iomuxc_ecspi1_mosi_ecspi_mosi_ecspi1_mosi>,
-                     <&iomuxc_ecspi1_ss0_ecspi_ss_ecspi1_ss0>;
+                     <&iomuxc_ecspi1_mosi_ecspi_mosi_ecspi1_mosi>;
             slew-rate = "slow";
         };
     };
@@ -51,6 +51,8 @@ hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_
     status = "okay";
     pinctrl-0 = <&ecspi1_default>;
     pinctrl-names = "default";
+    /* Hold CS across the driver's separate address/data bursts. */
+    cs-gpios = <&gpio5 9 GPIO_ACTIVE_LOW>;
 
     icm45686: icm45686@0 {
         compatible = "invensense,icm45686";
@@ -61,4 +63,9 @@ hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_
         accel-odr = <ICM45686_DT_ACCEL_ODR_100>;
         status = "okay";
     };
+
+};
+
+&gpio5 {
+    status = "okay";
 };
