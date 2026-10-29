@@ -134,6 +134,20 @@ int main(void) {
                         x.sign, x.whole, x.fraction, y.sign, y.whole,
                         y.fraction, z.sign, z.whole, z.fraction);
             }
+
+            sensor_value gyro[3];
+            result = sensor_channel_get(sensor, SENSOR_CHAN_GYRO_XYZ, gyro);
+            if (result != 0) {
+                LOG_ERR("ICM-45686 gyroscope read failed: %d", result);
+            } else {
+                const auto x = format_sensor_value(gyro[0]);
+                const auto y = format_sensor_value(gyro[1]);
+                const auto z = format_sensor_value(gyro[2]);
+
+                LOG_INF("Gyro [rad/s]: X=%s%d.%06u, Y=%s%d.%06u, Z=%s%d.%06u",
+                        x.sign, x.whole, x.fraction, y.sign, y.whole,
+                        y.fraction, z.sign, z.whole, z.fraction);
+            }
         }
 
         k_sleep(K_SECONDS(1));

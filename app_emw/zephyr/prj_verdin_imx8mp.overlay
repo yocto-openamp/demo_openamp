@@ -61,6 +61,9 @@ hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_
         accel-pwr-mode = <ICM45686_DT_ACCEL_LN>;
         accel-fs = <ICM45686_DT_ACCEL_FS_4>;
         accel-odr = <ICM45686_DT_ACCEL_ODR_100>;
+        gyro-pwr-mode = <ICM45686_DT_GYRO_LN>;
+        gyro-fs = <ICM45686_DT_GYRO_FS_2000>;
+        gyro-odr = <ICM45686_DT_GYRO_ODR_100>;
         status = "okay";
     };
 
