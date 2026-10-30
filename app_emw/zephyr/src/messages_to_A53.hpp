@@ -4,14 +4,14 @@
 
 namespace commands {
 
-// These must match util_messages_to_A55.py.
-enum class MSG_ID_M7_to_A55 : uint8_t {
+// These must match util_messages_to_A53.py.
+enum class MSG_ID_M7_to_A53 : uint8_t {
     STATUS = 1,
     IMU_STATUS = 2,
     INTERRUPT_LINE_SENSOR = 3,
 };
 
-// Sent 1:1 over RPMsg. This must match util_messages_to_A55.py.
+// Sent 1:1 over RPMsg. This must match util_messages_to_A53.py.
 typedef struct __attribute__((packed)) {
     int32_t msg_id;
     uint64_t timestamp; // us since boot

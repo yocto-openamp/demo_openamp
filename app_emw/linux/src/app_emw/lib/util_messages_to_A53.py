@@ -2,14 +2,14 @@ import ctypes
 import enum
 
 
-# These must match messages_to_A55.hpp.
-class MSG_ID_M7_to_A55(enum.IntEnum):
+# These must match messages_to_A53.hpp.
+class MSG_ID_M7_to_A53(enum.IntEnum):
     STATUS = 1
     IMU_STATUS = 2
     INTERRUPT_LINE_SENSOR = 3
 
 
-# Packed msg_imu_status in messages_to_A55.hpp.
+# Packed msg_imu_status in messages_to_A53.hpp.
 class MsgImuStatus(ctypes.Structure):
     _pack_ = 1
     _fields_ = [

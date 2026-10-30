@@ -1,6 +1,6 @@
 #include "lib_imu.hpp"
 
-#include "messages_to_A55.hpp"
+#include "messages_to_A53.hpp"
 #include "messages_to_M7.hpp"
 
 #include <zephyr/device.h>
@@ -105,7 +105,7 @@ commands::msg_imu_status imu_status = {};
 
 void send_imu_status(rpmsg::Endpoint &status_endpoint) {
     imu_status.msg_id =
-        static_cast<int32_t>(commands::MSG_ID_M7_to_A55::IMU_STATUS);
+        static_cast<int32_t>(commands::MSG_ID_M7_to_A53::IMU_STATUS);
     const int result = status_endpoint.send(&imu_status, sizeof(imu_status));
     if (result < 0) {
         LOG_WRN("Could not send IMU status: %d", result);

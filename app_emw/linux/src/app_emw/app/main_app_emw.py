@@ -5,7 +5,7 @@ import time
 
 from app_emw.lib.util_constants import IMU_MEASUREMENTS_FILE
 from app_emw.lib.util_imu_file import IMU_MEASUREMENT_SIZE
-from app_emw.lib.util_messages_to_A55 import MSG_ID_M7_to_A55, MsgImuStatus
+from app_emw.lib.util_messages_to_A53 import MSG_ID_M7_to_A53, MsgImuStatus
 from app_emw.lib.util_messages_to_M7 import RPMSG_IMU_START
 from demo_openamp.openamp.util_rpmsg import Rpmsg
 
@@ -63,7 +63,7 @@ async def run_imu(rpmsg: Rpmsg, output_file: pathlib.Path) -> None:
     print(f"Wrote {count} IMU measurements to {output_file}")
 
 
-async def handle_msg_to_A55(rpmsg: Rpmsg) -> None:
+async def handle_msg_to_A53(rpmsg: Rpmsg) -> None:
     # The firmware sends one status after every 50 measurements. run_imu reads 100.
     while True:
         payload = await rpmsg.read(512)
@@ -71,7 +71,7 @@ async def handle_msg_to_A55(rpmsg: Rpmsg) -> None:
             raise RuntimeError("RPMsg endpoint closed")
         msg_id = ctypes.c_int32.from_buffer_copy(payload).value
         match msg_id:
-            case MSG_ID_M7_to_A55.IMU_STATUS:
+            case MSG_ID_M7_to_A53.IMU_STATUS:
                 if len(payload) != ctypes.sizeof(MsgImuStatus):
                     raise RuntimeError(f"Unexpected IMU status size {len(payload)}")
 
@@ -102,7 +102,7 @@ def main() -> int:
             # IMU status shares this channel, so finish the ping-pong first.
             await run_pingpong(rpmsg_app)
             await asyncio.gather(
-                handle_msg_to_A55(rpmsg_app),
+                handle_msg_to_A53(rpmsg_app),
                 run_imu(rpmsg_imu, IMU_MEASUREMENTS_FILE),
             )
 
