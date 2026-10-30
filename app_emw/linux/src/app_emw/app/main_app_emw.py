@@ -2,9 +2,9 @@ import asyncio
 import pathlib
 import time
 
-from app_emw.lib.util_commands import RPMSG_IMU_START
 from app_emw.lib.util_constants import IMU_MEASUREMENTS_FILE
 from app_emw.lib.util_imu_file import IMU_MEASUREMENT_SIZE
+from app_emw.lib.util_messages_to_M7 import RPMSG_IMU_START
 from demo_openamp.openamp.util_rpmsg import Rpmsg
 
 # These must match the endpoint names in main.cpp.

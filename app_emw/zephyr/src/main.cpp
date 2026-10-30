@@ -1,4 +1,5 @@
-#include "commands.hpp"
+#include "messages_to_A55.hpp"
+#include "messages_to_M7.hpp"
 #include "lib_rpmsg.hpp"
 
 #include <zephyr/device.h>
