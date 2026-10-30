@@ -1,21 +1,7 @@
 import pydantic
-
 from utils.util_pydantic import SchemaExtra
 
 PREFIX_M7 = "/m7"
-
-"""
-typedef struct __attribute__((packed)) {
-    msg_header header;
-    uint64_t timestamp; // us since boot
-    int32_t measurement_count;
-    int32_t measurement_count_error;
-    float accel_x; // accel: um/s^2, gyro: urad/s
-    float accel_y;
-    float accel_z;
-    uint8_t accel; // 1: accel, 0: gyro
-} msg_imu_status;
-"""
 
 
 class ModelImuStatus(pydantic.BaseModel):

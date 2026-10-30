@@ -3,12 +3,14 @@ import ctypes
 import pathlib
 import time
 
+from app_emw.datamodel.imu_status import ModelImuStatus
 from app_emw.lib.util_constants import IMU_MEASUREMENTS_FILE
 from app_emw.lib.util_imu_file import IMU_MEASUREMENT_SIZE
 from app_emw.lib.util_messages import MsgHeader
-from app_emw.lib.util_messages_to_A53 import MSG_ID_M7_to_A53, MsgImuStatus
+from app_emw.lib.util_messages_to_A53 import MSG_ID_M7_to_A53
 from app_emw.lib.util_messages_to_M7 import RPMSG_IMU_START
 from demo_openamp.openamp.util_rpmsg import Rpmsg
+from renderer.renderer_cpp import RendererCPP
 
 # These must match the endpoint names in main.cpp.
 APP_CHANNEL_NAME: str = "rpmsg-emw-APP"
@@ -65,12 +67,15 @@ async def run_imu(rpmsg: Rpmsg, output_file: pathlib.Path) -> None:
 
 
 async def handle_msg_to_A53(rpmsg: Rpmsg) -> None:
-    # The firmware sends one status after every 50 measurements. run_imu reads 100.
+    renderer = RendererCPP(model=ModelImuStatus())
+    header_size = ctypes.sizeof(MsgHeader)
+    status_size = ctypes.sizeof(renderer.ctypes_model)
+
     while True:
         payload = await rpmsg.read(512)
         if not payload:
             raise RuntimeError("RPMsg endpoint closed")
-        if len(payload) < ctypes.sizeof(MsgHeader):
+        if len(payload) < header_size:
             raise RuntimeError(f"RPMsg payload too short for header: {len(payload)}")
         header = MsgHeader.from_buffer_copy(payload)
         if header.msg_size != len(payload):
@@ -80,18 +85,25 @@ async def handle_msg_to_A53(rpmsg: Rpmsg) -> None:
             )
         match header.msg_id:
             case MSG_ID_M7_to_A53.IMU_STATUS:
-                if len(payload) != ctypes.sizeof(MsgImuStatus):
+                if len(payload) != header_size + status_size:
                     raise RuntimeError(f"Unexpected IMU status size {len(payload)}")
 
-                status = MsgImuStatus.from_buffer_copy(payload)
+                status = renderer.deserialize_from_cpp(payload[header_size:])
+                assert isinstance(status, ModelImuStatus)
+
+                if status.is_accel:
+                    sensor = "accel"
+                    x, y, z = status.accel_x, status.accel_y, status.accel_z
+                else:
+                    sensor = "gyro"
+                    x, y, z = status.gyro_x, status.gyro_y, status.gyro_z
 
                 # Accel values are in m/s^2, gyro values in rad/s.
-                sensor = "accel" if status.accel else "gyro"
                 print(
                     f"IMU status: timestamp_us={status.timestamp}"
                     f" count={status.measurement_count}"
                     f" errors={status.measurement_count_error}"
-                    f" {sensor} x={status.x / 1e6:0.6f} y={status.y / 1e6:0.6f} z={status.z / 1e6:0.6f}"
+                    f" {sensor} x={x / 1e6:0.6f} y={y / 1e6:0.6f} z={z / 1e6:0.6f}"
                 )
             case _:
                 raise RuntimeError(f"Unexpected message id {header.msg_id}")
