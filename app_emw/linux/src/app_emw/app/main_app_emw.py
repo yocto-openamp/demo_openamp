@@ -2,6 +2,7 @@ import asyncio
 import pathlib
 import time
 
+from app_emw.lib.util_commands import RPMSG_IMU_START
 from app_emw.lib.util_constants import IMU_MEASUREMENTS_FILE
 from app_emw.lib.util_imu_file import IMU_MEASUREMENT_SIZE
 from demo_openamp.openamp.util_rpmsg import Rpmsg
@@ -46,7 +47,7 @@ async def run_imu(rpmsg: Rpmsg, output_file: pathlib.Path) -> None:
     print(f"Receiving {count} IMU measurements through {rpmsg.endpoint}")
 
     # The first Linux message lets OpenAMP learn this endpoint's return address.
-    await rpmsg.write(b"start")
+    await rpmsg.write(RPMSG_IMU_START)
 
     with output_file.open("wb") as file:
         for _ in range(count):

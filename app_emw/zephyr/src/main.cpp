@@ -1,3 +1,4 @@
+#include "commands.hpp"
 #include "lib_rpmsg.hpp"
 
 #include <zephyr/device.h>
@@ -84,7 +85,7 @@ rpmsg::Endpoint app_endpoint{"rpmsg-emw-APP", echo};
 
 int start_imu(rpmsg::Endpoint &, const void *data, std::size_t size,
               std::uint32_t, void *) {
-    constexpr char command[] = "start";
+    const auto &command = commands::RPMSG_IMU_START;
     if (size != sizeof(command) - 1 ||
         std::memcmp(data, command, sizeof(command) - 1) != 0) {
         LOG_WRN("Unexpected IMU RPMsg command");
