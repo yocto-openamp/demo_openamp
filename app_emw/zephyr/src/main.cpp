@@ -21,7 +21,7 @@ constexpr uint8_t ICM45686_DEVICE_ID = 0xe9;
 
 bool verify_sensor_id() {
     const spi_dt_spec spi = SPI_DT_SPEC_GET(
-        DT_NODELABEL(icm45686), SPI_OP_MODE_MASTER | SPI_WORD_SET(8));
+        DT_NODELABEL(icm45686), SPI_OP_MODE_CONTROLLER | SPI_WORD_SET(8));
     if (!spi_is_ready_dt(&spi)) {
         LOG_ERR("ICM-45686 SPI bus or chip select is not ready");
         return false;
