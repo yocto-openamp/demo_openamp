@@ -100,8 +100,7 @@ async def handle_msg_to_A53(rpmsg: Rpmsg) -> None:
 
                 # Accel values are in m/s^2, gyro values in rad/s.
                 print(
-                    f"IMU status: timestamp_us={status.timestamp}"
-                    f" count={status.measurement_count}"
+                    f"IMU status: count={status.measurement_count}"
                     f" errors={status.measurement_count_error}"
                     f" {sensor} x={x / 1e6:0.6f} y={y / 1e6:0.6f} z={z / 1e6:0.6f}"
                 )

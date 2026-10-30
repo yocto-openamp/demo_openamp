@@ -5,26 +5,15 @@ PREFIX_M7 = "/m7"
 
 
 class ModelImuStatus(pydantic.BaseModel):
-    timestamp: int = pydantic.Field(
-        default=0,
-        json_schema_extra=SchemaExtra(
-            unit="us",
-            comment="Timestamp",
-        ).dict,
-    )
     measurement_count: int = pydantic.Field(
-        default=4095,
-        ge=-4095,
-        le=4095,
+        default=0,
         json_schema_extra=SchemaExtra(
             unit="[1]",
             comment="Count of measurements attempts",
         ).dict,
     )
     measurement_count_error: int = pydantic.Field(
-        default=4095,
-        ge=-4095,
-        le=4095,
+        default=0,
         json_schema_extra=SchemaExtra(
             unit="[1]",
             comment="Count of failed measurements",
