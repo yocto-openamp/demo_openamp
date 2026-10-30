@@ -7,11 +7,28 @@ import logging
 import os
 import pathlib
 import struct
+import threading
 import time
 import types
 import typing
+import weakref
 
 logger = logging.getLogger(__file__)
+
+_endpoint_locks: weakref.WeakKeyDictionary[
+    asyncio.AbstractEventLoop, asyncio.Lock
+] = weakref.WeakKeyDictionary()
+_endpoint_locks_guard = threading.Lock()
+
+
+def _get_endpoint_lock() -> asyncio.Lock:
+    loop = asyncio.get_running_loop()
+    with _endpoint_locks_guard:
+        lock = _endpoint_locks.get(loop)
+        if lock is None:
+            lock = asyncio.Lock()
+            _endpoint_locks[loop] = lock
+        return lock
 
 
 def ioc(direction: int, ioctl_type: int, number: int, size: int) -> int:
@@ -45,16 +62,17 @@ class Rpmsg:
     async def __aenter__(self) -> Rpmsg:
         self.channel = await self._wait_for_channel()
         self.control = self._find_control_device()
-        previous_endpoints = self._endpoint_class_devices()
         stack = contextlib.ExitStack()
         try:
             control_file = stack.enter_context(self.control.open("rb+", buffering=0))
             destination = self._read_int(self.channel / "dst")
-            self.endpoint = await self._create_endpoint(
-                control_file,
-                destination,
-                previous_endpoints,
-            )
+            async with _get_endpoint_lock():
+                previous_endpoints = self._endpoint_class_devices()
+                self.endpoint = await self._create_endpoint(
+                    control_file,
+                    destination,
+                    previous_endpoints,
+                )
 
             async def wait_for_udev_rule() -> None:
                 timout_s = 1.0
