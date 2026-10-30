@@ -8,6 +8,7 @@
 #include <zephyr/logging/log.h>
 
 #include <cstdint>
+#include <cstdio>
 
 LOG_MODULE_REGISTER(app_emw);
 
@@ -76,6 +77,7 @@ int echo(rpmsg::Endpoint &endpoint, const void *data, std::size_t size,
 }
 
 rpmsg::Endpoint endpoint{"rpmsg-emw-xyrx2", echo};
+rpmsg::Endpoint imu_endpoint{"rpmsg-emw-IMU", echo};
 
 void manager(void *, void *, void *) {
     if (transport.initialize() != 0) {
@@ -85,11 +87,18 @@ void manager(void *, void *, void *) {
 }
 
 void client(void *, void *, void *) {
-    const int result = transport.attach(endpoint);
+    int result = transport.attach(endpoint);
     if (result != 0) {
         LOG_ERR("Could not create RPMsg endpoint: %d", result);
     } else {
-        LOG_INF("Linux RPMsg endpoint is ready");
+        LOG_INF("Linux RPMsg ping-pong endpoint is ready");
+    }
+
+    result = transport.attach(imu_endpoint);
+    if (result != 0) {
+        LOG_ERR("Could not create IMU RPMsg endpoint: %d", result);
+    } else {
+        LOG_INF("Linux RPMsg IMU endpoint is ready");
     }
 }
 
@@ -133,6 +142,24 @@ int main(void) {
                 LOG_INF("Accel [m/s^2]: X=%s%d.%06u, Y=%s%d.%06u, Z=%s%d.%06u",
                         x.sign, x.whole, x.fraction, y.sign, y.whole,
                         y.fraction, z.sign, z.whole, z.fraction);
+
+                char imu_message[128];
+                const int message_size = std::snprintf(
+                    imu_message, sizeof(imu_message),
+                    "X=%s%d.%06u,Y=%s%d.%06u,Z=%s%d.%06u", x.sign, x.whole,
+                    x.fraction, y.sign, y.whole, y.fraction, z.sign, z.whole,
+                    z.fraction);
+                if (message_size < 0 ||
+                    static_cast<std::size_t>(message_size) >=
+                        sizeof(imu_message)) {
+                    LOG_ERR("Could not format IMU RPMsg payload");
+                } else {
+                    result = imu_endpoint.send(
+                        imu_message, static_cast<std::size_t>(message_size));
+                    if (result != 0) {
+                        LOG_WRN("Could not send IMU RPMsg sample: %d", result);
+                    }
+                }
             }
 
             sensor_value gyro[3];
