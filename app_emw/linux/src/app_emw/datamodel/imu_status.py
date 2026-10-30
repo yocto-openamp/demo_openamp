@@ -61,10 +61,3 @@ class ModelImuStatus(pydantic.BaseModel):
             comment="Gyro",
         ).dict,
     )
-    is_accel: int = pydantic.Field(
-        default=1,
-        json_schema_extra=SchemaExtra(
-            unit="[0, 1]",
-            comment="1: accel, 0: gyro",
-        ).dict,
-    )

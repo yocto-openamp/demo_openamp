@@ -91,18 +91,16 @@ async def handle_msg_to_A53(rpmsg: Rpmsg) -> None:
                 status = renderer.deserialize_from_cpp(payload[header_size:])
                 assert isinstance(status, ModelImuStatus)
 
-                if status.is_accel:
-                    sensor = "accel"
-                    x, y, z = status.accel_x, status.accel_y, status.accel_z
-                else:
-                    sensor = "gyro"
-                    x, y, z = status.gyro_x, status.gyro_y, status.gyro_z
-
                 # Accel values are in m/s^2, gyro values in rad/s.
                 print(
                     f"IMU status: count={status.measurement_count}"
                     f" errors={status.measurement_count_error}"
-                    f" {sensor} x={x / 1e6:0.6f} y={y / 1e6:0.6f} z={z / 1e6:0.6f}"
+                    f" accel {status.accel_x / 1e6:0.3f}"
+                    f"/{status.accel_y / 1e6:0.3f}"
+                    f"/{status.accel_z / 1e6:0.3f}"
+                    f" gyro {status.gyro_x / 1e6:0.3f}"
+                    f"/{status.gyro_y / 1e6:0.3f}"
+                    f"/{status.gyro_z / 1e6:0.3f}"
                 )
             case _:
                 raise RuntimeError(f"Unexpected message id {header.msg_id}")

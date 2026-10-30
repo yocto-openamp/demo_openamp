@@ -146,8 +146,6 @@ void send_measurement(uint64_t timestamp, const sensor_value (&values)[3],
         static_cast<int32_t>(sensor_value_to_micro(&values[1])),
         static_cast<int32_t>(sensor_value_to_micro(&values[2])), is_accel};
 
-    imu_status.status.is_accel = measurement.accel;
-
     const int result = endpoint.send(&measurement, sizeof(measurement));
     if (result < 0) {
         LOG_WRN("Could not send IMU RPMsg measurement: %d", result);
