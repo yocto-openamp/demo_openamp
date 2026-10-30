@@ -11,10 +11,12 @@ dependencies = [
     "pydantic>=2.0",
     "nicegui>=2.0",
     "demo_openamp",
+    "experiment-datadefinitions",
 ]
 
 [tool.uv.sources]
 demo_openamp = { path = "..", editable = true }
+experiment-datadefinitions = { git = "https://github.com/yocto-openamp/experiment_datadefinitions", branch = "main" }
 
 [project.optional-dependencies]
 dev = [
