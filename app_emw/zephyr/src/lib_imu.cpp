@@ -60,6 +60,7 @@ struct FormattedSensorValue {
     uint32_t fraction;
 };
 
+#if LOG_IMU == 1
 FormattedSensorValue format_sensor_value(const sensor_value &value) {
     const int64_t millionths =
         static_cast<int64_t>(value.val1) * 1000000 + value.val2;
@@ -72,6 +73,7 @@ FormattedSensorValue format_sensor_value(const sensor_value &value) {
             static_cast<int32_t>(magnitude / 1000000),
             static_cast<uint32_t>(magnitude % 1000000)};
 }
+#endif // LOG_IMU
 
 K_SEM_DEFINE(imu_ready, 0, 1);
 
@@ -173,7 +175,7 @@ void run(rpmsg::Endpoint &status_endpoint) {
                 LOG_ERR("ICM-45686 accelerometer read failed: %d", result);
                 ++imu_status.measurement_count_error;
             } else {
-#if LOG_IMU == 0
+#if LOG_IMU == 1
                 const auto x = format_sensor_value(accel[0]);
                 const auto y = format_sensor_value(accel[1]);
                 const auto z = format_sensor_value(accel[2]);
@@ -194,7 +196,7 @@ void run(rpmsg::Endpoint &status_endpoint) {
                     LOG_ERR("ICM-45686 gyroscope read failed: %d", result);
                     ++imu_status.measurement_count_error;
                 } else {
-#if LOG_IMU == 0
+#if LOG_IMU == 1
                     const auto x = format_sensor_value(gyro[0]);
                     const auto y = format_sensor_value(gyro[1]);
                     const auto z = format_sensor_value(gyro[2]);
