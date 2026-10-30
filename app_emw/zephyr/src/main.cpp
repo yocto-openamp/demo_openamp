@@ -8,17 +8,19 @@
 #include <zephyr/logging/log.h>
 
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 
 LOG_MODULE_REGISTER(app_emw);
 
 #define APP_TASK_STACK_SIZE 2048
 
+#define LOG_IMU 0
+
 namespace {
 
 constexpr uint8_t ICM45686_WHO_AM_I = 0x72;
 constexpr uint8_t ICM45686_DEVICE_ID = 0xe9;
+constexpr uint32_t ACCEL_MEASUREMENTS_PER_GYRO = 10;
 
 bool verify_sensor_id() {
     const spi_dt_spec spi = SPI_DT_SPEC_GET(
@@ -95,6 +97,32 @@ int start_imu(rpmsg::Endpoint &, const void *data, std::size_t size,
 
 rpmsg::Endpoint imu_endpoint{"rpmsg-emw-IMU", start_imu};
 
+// Sent 1:1 over RPMsg. This must match util_imu_measurmenets.py.
+typedef struct __attribute__((packed)) {
+    uint64_t timestamp; // us since boot
+    int32_t x;          // accel: um/s^2, gyro: urad/s
+    int32_t y;
+    int32_t z;
+    uint8_t accel; // 1: accel, 0: gyro
+} measurement_t;
+
+static_assert(sizeof(measurement_t) == 21, "measurement_t layout changed");
+
+void send_measurement(uint64_t timestamp, const sensor_value (&values)[3],
+                      bool accel) {
+    const measurement_t measurement = {
+        timestamp, static_cast<int32_t>(sensor_value_to_micro(&values[0])),
+        static_cast<int32_t>(sensor_value_to_micro(&values[1])),
+        static_cast<int32_t>(sensor_value_to_micro(&values[2])), accel};
+    const int result = imu_endpoint.send(&measurement, sizeof(measurement));
+    if (result < 0) {
+        LOG_WRN("Could not send IMU RPMsg measurement: %d", result);
+    } else if (static_cast<std::size_t>(result) != sizeof(measurement)) {
+        LOG_WRN("Incomplete IMU RPMsg measurement: %d of %u bytes", result,
+                static_cast<unsigned int>(sizeof(measurement)));
+    }
+}
+
 void manager(void *, void *, void *) {
     if (transport.initialize() != 0) {
         return;
@@ -144,16 +172,20 @@ int main(void) {
     LOG_INF("Waiting for Linux to start IMU streaming");
     k_sem_take(&imu_ready, K_FOREVER);
 
+    uint32_t accel_count = 0;
     while (true) {
         int result = sensor_sample_fetch(sensor);
         if (result != 0) {
             LOG_ERR("ICM-45686 sample fetch failed: %d", result);
         } else {
+            const uint64_t timestamp = k_cyc_to_us_near64(k_cycle_get_64());
+
             sensor_value accel[3];
             result = sensor_channel_get(sensor, SENSOR_CHAN_ACCEL_XYZ, accel);
             if (result != 0) {
                 LOG_ERR("ICM-45686 accelerometer read failed: %d", result);
             } else {
+#if LOG_IMU == 0
                 const auto x = format_sensor_value(accel[0]);
                 const auto y = format_sensor_value(accel[1]);
                 const auto z = format_sensor_value(accel[2]);
@@ -161,45 +193,34 @@ int main(void) {
                 LOG_INF("Accel [m/s^2]: X=%s%d.%06u, Y=%s%d.%06u, Z=%s%d.%06u",
                         x.sign, x.whole, x.fraction, y.sign, y.whole,
                         y.fraction, z.sign, z.whole, z.fraction);
-
-                char imu_message[128];
-                const int message_size = std::snprintf(
-                    imu_message, sizeof(imu_message),
-                    "X=%s%d.%06u,Y=%s%d.%06u,Z=%s%d.%06u", x.sign, x.whole,
-                    x.fraction, y.sign, y.whole, y.fraction, z.sign, z.whole,
-                    z.fraction);
-                if (message_size < 0 ||
-                    static_cast<std::size_t>(message_size) >=
-                        sizeof(imu_message)) {
-                    LOG_ERR("Could not format IMU RPMsg payload");
-                } else {
-                    result = imu_endpoint.send(
-                        imu_message, static_cast<std::size_t>(message_size));
-                    if (result < 0) {
-                        LOG_WRN("Could not send IMU RPMsg sample: %d", result);
-                    } else if (result != message_size) {
-                        LOG_WRN("Incomplete IMU RPMsg sample: %d of %d bytes",
-                                result, message_size);
-                    }
-                }
+#endif // LOG_IMU
+                send_measurement(timestamp, accel, true);
             }
 
-            sensor_value gyro[3];
-            result = sensor_channel_get(sensor, SENSOR_CHAN_GYRO_XYZ, gyro);
-            if (result != 0) {
-                LOG_ERR("ICM-45686 gyroscope read failed: %d", result);
-            } else {
-                const auto x = format_sensor_value(gyro[0]);
-                const auto y = format_sensor_value(gyro[1]);
-                const auto z = format_sensor_value(gyro[2]);
+            if (++accel_count >= ACCEL_MEASUREMENTS_PER_GYRO) {
+                accel_count = 0;
 
-                LOG_INF("Gyro [rad/s]: X=%s%d.%06u, Y=%s%d.%06u, Z=%s%d.%06u",
-                        x.sign, x.whole, x.fraction, y.sign, y.whole,
-                        y.fraction, z.sign, z.whole, z.fraction);
+                sensor_value gyro[3];
+                result = sensor_channel_get(sensor, SENSOR_CHAN_GYRO_XYZ, gyro);
+                if (result != 0) {
+                    LOG_ERR("ICM-45686 gyroscope read failed: %d", result);
+                } else {
+#if LOG_IMU == 0
+                    const auto x = format_sensor_value(gyro[0]);
+                    const auto y = format_sensor_value(gyro[1]);
+                    const auto z = format_sensor_value(gyro[2]);
+
+                    LOG_INF("Gyro [rad/s]: X=%s%d.%06u, Y=%s%d.%06u, "
+                            "Z=%s%d.%06u",
+                            x.sign, x.whole, x.fraction, y.sign, y.whole,
+                            y.fraction, z.sign, z.whole, z.fraction);
+#endif // LOG_IMU
+                    send_measurement(timestamp, gyro, false);
+                }
             }
         }
 
-        k_sleep(K_SECONDS(1));
+        k_sleep(K_USEC(1));
     }
 
     return 0;

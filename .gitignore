@@ -9,3 +9,4 @@ build/
 coreA53/tests/model_duallist.py
 coreA53/tests/schema_model_list.py
 uv.lock
+app_emw/data/*

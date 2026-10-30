@@ -1,8 +1,9 @@
-#!/usr/bin/env python3
-
 import asyncio
+import pathlib
 import time
 
+from app_emw.lib.util_constants import IMU_MEASUREMENTS_FILE
+from app_emw.lib.util_imu_file import IMU_MEASUREMENT_SIZE
 from demo_openamp.openamp.util_rpmsg import Rpmsg
 
 # These must match the endpoint names in main.cpp.
@@ -36,32 +37,43 @@ async def run_pingpong(rpmsg: Rpmsg) -> None:
     )
 
 
-async def run_imu(rpmsg: Rpmsg) -> None:
-    count = 3
+async def run_imu(rpmsg: Rpmsg, output_file: pathlib.Path) -> None:
+    # The firmware sends one gyro measurement after every 10 accel measurements.
+    count = 100
 
     assert rpmsg.channel is not None
     print(f"Channel {rpmsg.channel.name}")
-    print(f"Receiving {count} IMU samples through {rpmsg.endpoint}")
+    print(f"Receiving {count} IMU measurements through {rpmsg.endpoint}")
 
     # The first Linux message lets OpenAMP learn this endpoint's return address.
     await rpmsg.write(b"start")
 
-    for sample in range(1, count + 1):
-        payload = await rpmsg.read(512)
-        if not payload:
-            raise RuntimeError("IMU RPMsg endpoint closed")
-        print(f"IMU sample {sample}: {payload.decode(errors='replace')}")
+    with output_file.open("wb") as file:
+        for _ in range(count):
+            payload = await rpmsg.read(512)
+            if not payload:
+                raise RuntimeError("IMU RPMsg endpoint closed")
+            if len(payload) != IMU_MEASUREMENT_SIZE:
+                raise RuntimeError(f"Unexpected IMU payload size {len(payload)}")
+            file.write(payload)
+
+    print(f"Wrote {count} IMU measurements to {output_file}")
 
 
 def main() -> int:
     async def run() -> None:
-        async with Rpmsg(
-            channel_name=APP_CHANNEL_NAME, control_name=None, timeout=10.0
-        ) as rpmsg_app:
-            async with Rpmsg(
+        async with (
+            Rpmsg(
+                channel_name=APP_CHANNEL_NAME, control_name=None, timeout=10.0
+            ) as rpmsg_app,
+            Rpmsg(
                 channel_name=IMU_CHANNEL_NAME, control_name=None, timeout=10.0
-            ) as rpmsg_imu:
-                await asyncio.gather(run_pingpong(rpmsg_app), run_imu(rpmsg_imu))
+            ) as rpmsg_imu,
+        ):
+            await asyncio.gather(
+                run_pingpong(rpmsg_app),
+                run_imu(rpmsg_imu, IMU_MEASUREMENTS_FILE),
+            )
 
     asyncio.run(run())
 

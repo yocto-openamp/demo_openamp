@@ -19,4 +19,4 @@ cp ./build/zephyr/demo_rpmsg.elf /home/torizon/firmware
 echo demo_rpmsg.elf > /sys/class/remoteproc/remoteproc0/firmware
 echo start > /sys/class/remoteproc/remoteproc0/state
 
-$REPO_DIR/.venv/bin/python linux/src/main_rpmsg_pingpong.py
+$REPO_DIR/app_emw/.venv/bin/python -m app_emw.app.main_app_emw

@@ -2,6 +2,14 @@
 
 This demo uses a zephyr app on the M7 side and some python conde on the linux side.
 
+## Prepare uv
+
+```bash
+cd linux
+uv venv
+. .venv/bin/activate
+uv sync --all-extras
+```
 
 ## Build and run
 
