@@ -6,7 +6,7 @@ import time
 from demo_openamp.openamp.util_rpmsg import Rpmsg
 
 # These must match the endpoint names in main.cpp.
-CHANNEL_NAME: str = "rpmsg-emw-xyrx2"
+APP_CHANNEL_NAME: str = "rpmsg-emw-APP"
 IMU_CHANNEL_NAME: str = "rpmsg-emw-IMU"
 
 
@@ -53,12 +53,12 @@ async def run_imu(rpmsg: Rpmsg) -> None:
 def main() -> int:
     async def run() -> None:
         async with Rpmsg(
-            channel_name=CHANNEL_NAME, control_name=None, timeout=10.0
-        ) as pingpong:
+            channel_name=APP_CHANNEL_NAME, control_name=None, timeout=10.0
+        ) as rpmsg_app:
             async with Rpmsg(
                 channel_name=IMU_CHANNEL_NAME, control_name=None, timeout=10.0
-            ) as imu:
-                await asyncio.gather(run_pingpong(pingpong), run_imu(imu))
+            ) as rpmsg_imu:
+                await asyncio.gather(run_pingpong(rpmsg_app), run_imu(rpmsg_imu))
 
     asyncio.run(run())
 

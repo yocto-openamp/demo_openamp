@@ -18,7 +18,7 @@ int echo(rpmsg::Endpoint &endpoint, const void *data, std::size_t size,
     return endpoint.send(data, size);
 }
 
-rpmsg::Endpoint endpoint{"rpmsg-demo-xyrx2", echo};
+rpmsg::Endpoint app_endpoint{"rpmsg-demo-xyrx2", echo};
 
 void manager(void *, void *, void *) {
     if (transport.initialize() != 0) {
@@ -28,7 +28,7 @@ void manager(void *, void *, void *) {
 }
 
 void client(void *, void *, void *) {
-    const int result = transport.attach(endpoint);
+    const int result = transport.attach(app_endpoint);
     if (result != 0) {
         LOG_ERR("Could not create RPMsg endpoint: %d", result);
     } else {

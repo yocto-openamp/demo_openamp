@@ -76,7 +76,7 @@ int echo(rpmsg::Endpoint &endpoint, const void *data, std::size_t size,
     return endpoint.send(data, size);
 }
 
-rpmsg::Endpoint endpoint{"rpmsg-emw-xyrx2", echo};
+rpmsg::Endpoint app_endpoint{"rpmsg-emw-APP", echo};
 rpmsg::Endpoint imu_endpoint{"rpmsg-emw-IMU", echo};
 
 void manager(void *, void *, void *) {
@@ -87,7 +87,7 @@ void manager(void *, void *, void *) {
 }
 
 void client(void *, void *, void *) {
-    int result = transport.attach(endpoint);
+    int result = transport.attach(app_endpoint);
     if (result != 0) {
         LOG_ERR("Could not create RPMsg endpoint: %d", result);
     } else {
