@@ -18,35 +18,6 @@
             "program": "${workspaceFolder}/demo_datadefinition/linux/main_simple_json.py",
             "args": [],
             "jinja": true
-        },
-        {
-            "name": "demo_datadefinition: Mockup a",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "uvicorn",
-            "args": [
-                "demo_openamp.webui_mockup_a.webui:app",
-                "--reload"
-            ],
-            "jinja": true
-        },
-        {
-            "name": "demo_datadefinition: Web UI",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "uvicorn",
-            "args": [
-                "demo_openamp.webui.webui:app",
-                "--reload"
-            ],
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/src",
-                // "ENV_UART": "/dev/ttyUSB0",
-                // "ENV_UART": "/dev/pts/6",
-                "ENV_PIPE": "namedpipe",
-                // "ENV_FILE_POLLER": "pollfile",
-            },
-            "jinja": true
         }
     ]
 }
