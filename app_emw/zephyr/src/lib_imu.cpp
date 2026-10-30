@@ -104,8 +104,9 @@ static_assert(sizeof(measurement_t) == 21, "measurement_t layout changed");
 commands::msg_imu_status imu_status = {};
 
 void send_imu_status(rpmsg::Endpoint &status_endpoint) {
-    imu_status.msg_id =
-        static_cast<int32_t>(commands::MSG_ID_M7_to_A53::IMU_STATUS);
+    imu_status.header.msg_id =
+        static_cast<int16_t>(commands::MSG_ID_M7_to_A53::IMU_STATUS);
+    imu_status.header.msg_size = sizeof(imu_status);
     const int result = status_endpoint.send(&imu_status, sizeof(imu_status));
     if (result < 0) {
         LOG_WRN("Could not send IMU status: %d", result);

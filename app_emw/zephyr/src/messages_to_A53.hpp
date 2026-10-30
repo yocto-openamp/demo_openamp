@@ -1,5 +1,7 @@
 #pragma once
 
+#include "messages.hpp"
+
 #include <cstdint>
 
 namespace commands {
@@ -13,7 +15,7 @@ enum class MSG_ID_M7_to_A53 : uint8_t {
 
 // Sent 1:1 over RPMsg. This must match util_messages_to_A53.py.
 typedef struct __attribute__((packed)) {
-    int32_t msg_id;
+    msg_header header;
     uint64_t timestamp; // us since boot
     int32_t measurement_count;
     int32_t measurement_count_error;

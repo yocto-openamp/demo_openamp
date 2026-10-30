@@ -60,7 +60,9 @@ int main(void) {
 
     k_thread_start(imu_thread);
 
-    k_sleep(K_SECONDS(10));
+    k_sleep(K_SECONDS(5));
+
+    LOG_INF("Done");
 
     return 0;
 }

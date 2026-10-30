@@ -1,6 +1,8 @@
 import ctypes
 import enum
 
+from app_emw.lib.util_messages import MsgHeader
+
 
 # These must match messages_to_A53.hpp.
 class MSG_ID_M7_to_A53(enum.IntEnum):
@@ -13,7 +15,7 @@ class MSG_ID_M7_to_A53(enum.IntEnum):
 class MsgImuStatus(ctypes.Structure):
     _pack_ = 1
     _fields_ = [
-        ("msg_id", ctypes.c_int32),
+        ("header", MsgHeader),
         ("timestamp", ctypes.c_uint64),  # us since boot
         ("measurement_count", ctypes.c_int32),
         ("measurement_count_error", ctypes.c_int32),

@@ -5,6 +5,7 @@ import time
 
 from app_emw.lib.util_constants import IMU_MEASUREMENTS_FILE
 from app_emw.lib.util_imu_file import IMU_MEASUREMENT_SIZE
+from app_emw.lib.util_messages import MsgHeader
 from app_emw.lib.util_messages_to_A53 import MSG_ID_M7_to_A53, MsgImuStatus
 from app_emw.lib.util_messages_to_M7 import RPMSG_IMU_START
 from demo_openamp.openamp.util_rpmsg import Rpmsg
@@ -69,8 +70,15 @@ async def handle_msg_to_A53(rpmsg: Rpmsg) -> None:
         payload = await rpmsg.read(512)
         if not payload:
             raise RuntimeError("RPMsg endpoint closed")
-        msg_id = ctypes.c_int32.from_buffer_copy(payload).value
-        match msg_id:
+        if len(payload) < ctypes.sizeof(MsgHeader):
+            raise RuntimeError(f"RPMsg payload too short for header: {len(payload)}")
+        header = MsgHeader.from_buffer_copy(payload)
+        if header.msg_size != len(payload):
+            raise RuntimeError(
+                f"Message size mismatch: header announces {header.msg_size},"
+                f" received {len(payload)}"
+            )
+        match header.msg_id:
             case MSG_ID_M7_to_A53.IMU_STATUS:
                 if len(payload) != ctypes.sizeof(MsgImuStatus):
                     raise RuntimeError(f"Unexpected IMU status size {len(payload)}")
@@ -86,7 +94,7 @@ async def handle_msg_to_A53(rpmsg: Rpmsg) -> None:
                     f" {sensor} x={status.x / 1e6:0.6f} y={status.y / 1e6:0.6f} z={status.z / 1e6:0.6f}"
                 )
             case _:
-                raise RuntimeError(f"Unexpected message id {msg_id}")
+                raise RuntimeError(f"Unexpected message id {header.msg_id}")
 
 
 def main() -> int:
