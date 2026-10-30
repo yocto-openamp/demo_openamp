@@ -43,6 +43,9 @@ async def run_imu(rpmsg: Rpmsg) -> None:
     print(f"Channel {rpmsg.channel.name}")
     print(f"Receiving {count} IMU samples through {rpmsg.endpoint}")
 
+    # The first Linux message lets OpenAMP learn this endpoint's return address.
+    await rpmsg.write(b"start")
+
     for sample in range(1, count + 1):
         payload = await rpmsg.read(512)
         if not payload:

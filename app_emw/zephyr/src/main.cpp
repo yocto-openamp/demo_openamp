@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 
 LOG_MODULE_REGISTER(app_emw);
 
@@ -68,6 +69,7 @@ FormattedSensorValue format_sensor_value(const sensor_value &value) {
 }
 
 rpmsg::Transport transport;
+K_SEM_DEFINE(imu_ready, 0, 1);
 
 int echo(rpmsg::Endpoint &endpoint, const void *data, std::size_t size,
          std::uint32_t, void *) {
@@ -77,7 +79,21 @@ int echo(rpmsg::Endpoint &endpoint, const void *data, std::size_t size,
 }
 
 rpmsg::Endpoint app_endpoint{"rpmsg-emw-APP", echo};
-rpmsg::Endpoint imu_endpoint{"rpmsg-emw-IMU", echo};
+
+int start_imu(rpmsg::Endpoint &, const void *data, std::size_t size,
+              std::uint32_t, void *) {
+    constexpr char command[] = "start";
+    if (size != sizeof(command) - 1 ||
+        std::memcmp(data, command, sizeof(command) - 1) != 0) {
+        LOG_WRN("Unexpected IMU RPMsg command");
+        return 0;
+    }
+
+    k_sem_give(&imu_ready);
+    return 0;
+}
+
+rpmsg::Endpoint imu_endpoint{"rpmsg-emw-IMU", start_imu};
 
 void manager(void *, void *, void *) {
     if (transport.initialize() != 0) {
@@ -125,6 +141,9 @@ int main(void) {
         return 0;
     }
 
+    LOG_INF("Waiting for Linux to start IMU streaming");
+    k_sem_take(&imu_ready, K_FOREVER);
+
     while (true) {
         int result = sensor_sample_fetch(sensor);
         if (result != 0) {
@@ -156,8 +175,11 @@ int main(void) {
                 } else {
                     result = imu_endpoint.send(
                         imu_message, static_cast<std::size_t>(message_size));
-                    if (result != 0) {
+                    if (result < 0) {
                         LOG_WRN("Could not send IMU RPMsg sample: %d", result);
+                    } else if (result != message_size) {
+                        LOG_WRN("Incomplete IMU RPMsg sample: %d of %d bytes",
+                                result, message_size);
                     }
                 }
             }
