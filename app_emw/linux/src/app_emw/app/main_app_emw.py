@@ -1,9 +1,11 @@
 import asyncio
+import ctypes
 import pathlib
 import time
 
 from app_emw.lib.util_constants import IMU_MEASUREMENTS_FILE
 from app_emw.lib.util_imu_file import IMU_MEASUREMENT_SIZE
+from app_emw.lib.util_messages_to_A55 import MSG_ID_M7_to_A55, MsgImuStatus
 from app_emw.lib.util_messages_to_M7 import RPMSG_IMU_START
 from demo_openamp.openamp.util_rpmsg import Rpmsg
 
@@ -61,6 +63,32 @@ async def run_imu(rpmsg: Rpmsg, output_file: pathlib.Path) -> None:
     print(f"Wrote {count} IMU measurements to {output_file}")
 
 
+async def handle_msg_to_A55(rpmsg: Rpmsg) -> None:
+    # The firmware sends one status after every 50 measurements. run_imu reads 100.
+    while True:
+        payload = await rpmsg.read(512)
+        if not payload:
+            raise RuntimeError("RPMsg endpoint closed")
+        msg_id = ctypes.c_int32.from_buffer_copy(payload).value
+        match msg_id:
+            case MSG_ID_M7_to_A55.IMU_STATUS:
+                if len(payload) != ctypes.sizeof(MsgImuStatus):
+                    raise RuntimeError(f"Unexpected IMU status size {len(payload)}")
+
+                status = MsgImuStatus.from_buffer_copy(payload)
+
+                # Accel values are in m/s^2, gyro values in rad/s.
+                sensor = "accel" if status.accel else "gyro"
+                print(
+                    f"IMU status: timestamp_us={status.timestamp}"
+                    f" count={status.measurement_count}"
+                    f" errors={status.measurement_count_error}"
+                    f" {sensor} x={status.x / 1e6:0.6f} y={status.y / 1e6:0.6f} z={status.z / 1e6:0.6f}"
+                )
+            case _:
+                raise RuntimeError(f"Unexpected message id {msg_id}")
+
+
 def main() -> int:
     async def run() -> None:
         async with (
@@ -71,8 +99,10 @@ def main() -> int:
                 channel_name=IMU_CHANNEL_NAME, control_name=None, timeout=10.0
             ) as rpmsg_imu,
         ):
+            # IMU status shares this channel, so finish the ping-pong first.
+            await run_pingpong(rpmsg_app)
             await asyncio.gather(
-                run_pingpong(rpmsg_app),
+                handle_msg_to_A55(rpmsg_app),
                 run_imu(rpmsg_imu, IMU_MEASUREMENTS_FILE),
             )
 

@@ -5,9 +5,9 @@ RPMSG_IMU_START: bytes = b"start"
 
 
 # Sent as one byte over RPMsg. These must match messages_to_M7.hpp.
-class MSG_CMD_A55_to_M7(enum.IntEnum):
+class MSG_ID_A55_to_M7(enum.IntEnum):
     IMU_START = 1
 
 
-def encode_msg(command: MSG_CMD_A55_to_M7) -> bytes:
+def encode_msg(command: MSG_ID_A55_to_M7) -> bytes:
     return bytes([command])
