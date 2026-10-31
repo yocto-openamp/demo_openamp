@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import logging
 
 import uvicorn
 from app_emw.datamodel.imu_status import ModelEMW
-from app_emw.lib import util_constants, util_logging
+from app_emw.lib import util_app_emw, util_cmd_to_A53, util_constants, util_logging
 from fastapi import FastAPI
 from nicegui import ui
 from utils import (
@@ -26,6 +27,8 @@ class WebUIState:
     def __init__(self) -> None:
         self.observer = Observer()
         self.model = ModelEMW()
+        self.handler_cmd_A53_console = util_cmd_to_A53.HandlerCmdA53Console()
+
         self.hierarchy = util_pydantic.ModelHierarchy.factory(
             model=self.model,
             prefix=f"{util_constants.PREFIX_M7}",
@@ -60,10 +63,23 @@ class WebUIState:
 webui_state = WebUIState()
 
 
+def _log_task_result(task: asyncio.Task[None]) -> None:
+    if not task.cancelled() and task.exception() is not None:
+        logger.error("Task %s failed", task.get_name(), exc_info=task.exception())
+
+
 @contextlib.asynccontextmanager
 async def lifespan(_app: FastAPI):
+
     await util_datasources.namedpipe_task(observer=webui_state.observer)
     util_datasinks.logger_sink(observer=webui_state.observer)
+
+    task_app_emw = asyncio.create_task(
+        util_app_emw.app_emw(handler_cmd_A53=webui_state.handler_cmd_A53_console),
+        name="app_emw",
+    )
+    task_app_emw.add_done_callback(_log_task_result)
+
     try:
         yield
     finally:
@@ -128,7 +144,7 @@ async def create_app() -> None:
             if False:
                 with ui.expansion("Custom", value=True).classes("w-full"):
                     with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
-                        topic = f"{PREFIX_M7}/common/debuglevel"
+                        topic = f"{util_constants.PREFIX_M7}/common/debuglevel"
                         simple_editors.create_selection_field(
                             options={
                                 0: "off",
@@ -143,7 +159,7 @@ async def create_app() -> None:
                         )
 
                     with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
-                        topic = f"{PREFIX_M7}/axis_x/value"
+                        topic = f"{util_constants.PREFIX_M7}/axis_x/value"
                         simple_editors.create_slider_field(
                             observer=webui_state.observer,
                             topic=topic,
