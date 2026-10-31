@@ -26,42 +26,42 @@ class ModelImuStatus(pydantic.BaseModel):
     accel_x: float = pydantic.Field(
         default=0.0,
         json_schema_extra=SchemaExtra(
-            unit="um/s^2",
+            unit="m/s^2",
             comment="Accel",
         ).dict,
     )
     accel_y: float = pydantic.Field(
         default=0.0,
         json_schema_extra=SchemaExtra(
-            unit="um/s^2",
+            unit="m/s^2",
             comment="Accel",
         ).dict,
     )
     accel_z: float = pydantic.Field(
         default=0.0,
         json_schema_extra=SchemaExtra(
-            unit="um/s^2",
+            unit="m/s^2",
             comment="Accel",
         ).dict,
     )
     gyro_x: float = pydantic.Field(
         default=0.0,
         json_schema_extra=SchemaExtra(
-            unit="urad/s",
+            unit="rad/s",
             comment="Gyro",
         ).dict,
     )
     gyro_y: float = pydantic.Field(
         default=0.0,
         json_schema_extra=SchemaExtra(
-            unit="urad/s",
+            unit="rad/s",
             comment="Gyro",
         ).dict,
     )
     gyro_z: float = pydantic.Field(
         default=0.0,
         json_schema_extra=SchemaExtra(
-            unit="urad/s",
+            unit="rad/s",
             comment="Gyro",
         ).dict,
     )

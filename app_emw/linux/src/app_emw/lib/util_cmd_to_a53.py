@@ -109,10 +109,10 @@ class HandlerCmdA53Console(HandlerCmdA53):
         print(
             f"IMU status: count={imu_status.measurement_count}"
             f" errors={imu_status.measurement_count_error}"
-            f" accel={imu_status.accel_x / 1e6:+6.3f}"
-            f"/{imu_status.accel_y / 1e6:+6.3f}"
-            f"/{imu_status.accel_z / 1e6:+6.3f}"
-            f" gyro={imu_status.gyro_x / 1e6:+6.3f}"
-            f"/{imu_status.gyro_y / 1e6:+6.3f}"
-            f"/{imu_status.gyro_z / 1e6:+6.3f}"
+            f" accel={imu_status.accel_x:+6.3f}"
+            f"/{imu_status.accel_y:+6.3f}"
+            f"/{imu_status.accel_z:+6.3f}"
+            f" gyro={imu_status.gyro_x:+6.3f}"
+            f"/{imu_status.gyro_y:+6.3f}"
+            f"/{imu_status.gyro_z:+6.3f}"
         )

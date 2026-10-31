@@ -5,6 +5,7 @@ import contextlib
 import logging
 import typing
 
+import pydantic
 import uvicorn
 from experiment_datadefinitions.utils import (
     util_datasinks,
@@ -33,20 +34,45 @@ logger = logging.getLogger(__name__)
 util_logging.init_logging()
 
 
-class HandlerCmdA53Console(util_cmd_to_a53.HandlerCmdA53):
+class HandlerCmdA53(util_cmd_to_a53.HandlerCmdA53):
+    def __init__(self, observer: Observer) -> None:
+        self.observer = observer
+
+    def _notify(self, topic: str, data: pydantic.BaseModel) -> None:
+        assert isinstance(topic, str)
+        assert not topic.endswith("/")
+        assert isinstance(data, pydantic.BaseModel)
+
+        for field in util_pydantic.FieldInfoIter.iter_model(data):
+            topic_value = getattr(data, field.field_name)
+
+            message = Message(
+                topic=f"{topic}/{field.field_name}",
+                verb=MessageVerb.NOTIFY,
+                topic_value=topic_value,
+            )
+
+            self.observer.send_message(message=message)
+
     @typing.override
     def handle_imu_status(self, imu_status: datamodels_emw.ModelImuStatus) -> None:
         assert isinstance(imu_status, datamodels_emw.ModelImuStatus)
-        # Accel values are in m/s^2, gyro values in rad/s.
-        print(
-            f"IMU status: count={imu_status.measurement_count}"
-            f" errors={imu_status.measurement_count_error}"
-            f" accel={imu_status.accel_x / 1e6:+6.3f}"
-            f"/{imu_status.accel_y / 1e6:+6.3f}"
-            f"/{imu_status.accel_z / 1e6:+6.3f}"
-            f" gyro={imu_status.gyro_x / 1e6:+6.3f}"
-            f"/{imu_status.gyro_y / 1e6:+6.3f}"
-            f"/{imu_status.gyro_z / 1e6:+6.3f}"
+        if False:
+            # Accel values are in m/s^2, gyro values in rad/s.
+            print(
+                f"IMU status: count={imu_status.measurement_count}"
+                f" errors={imu_status.measurement_count_error}"
+                f" accel={imu_status.accel_x:+6.3f}"
+                f"/{imu_status.accel_y:+6.3f}"
+                f"/{imu_status.accel_z:+6.3f}"
+                f" gyro={imu_status.gyro_x:+6.3f}"
+                f"/{imu_status.gyro_y:+6.3f}"
+                f"/{imu_status.gyro_z:+6.3f}"
+            )
+
+        self._notify(
+            topic=f"{util_constants.PREFIX_M7}/imu_status",
+            data=imu_status,
         )
 
 
@@ -54,7 +80,7 @@ class WebUIState:
     def __init__(self) -> None:
         self.observer = Observer()
         self.model = datamodels_emw.ModelEMW()
-        self.handler_cmd_A53_console = util_cmd_to_a53.HandlerCmdA53Console()
+        self.handler_cmd_A53 = HandlerCmdA53(observer=self.observer)
 
         self.hierarchy = util_pydantic.ModelHierarchy.factory(
             model=self.model,
@@ -102,7 +128,7 @@ async def lifespan(_app: FastAPI):
     util_datasinks.logger_sink(observer=webui_state.observer)
 
     task_app_emw = asyncio.create_task(
-        util_app_emw.app_emw(handler_cmd_a53=webui_state.handler_cmd_A53_console),
+        util_app_emw.app_emw(handler_cmd_a53=webui_state.handler_cmd_A53),
         name="app_emw",
     )
     task_app_emw.add_done_callback(_log_task_result)
@@ -138,63 +164,39 @@ async def create_app() -> None:
     def dump(mh: util_pydantic.ModelHierarchy) -> None:
         assert isinstance(mh, util_pydantic.ModelHierarchy)
 
-        use_tabs = False
-        if use_tabs:
-            # Tabs
-            dict_tabs = {}
+        # Expansion
+        for _topic, item in mh.compounds.items():
+            with ui.expansion(item.title, value=True).classes("w-full"):
+                # logger.debug(f"compound: {topic} - {item.model!r}")
+                dump_elements(mh=item)
 
-            with ui.tabs().classes("w-full") as tabs:
-                for topic, item in mh.compounds.items():
-                    # dict_tabs[path] = ui.tab(f"{path}: {item.title}")
-                    dict_tabs[topic] = ui.tab(item.title)
+        if False:
+            with ui.expansion("Custom", value=True).classes("w-full"):
+                with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
+                    topic = f"{util_constants.PREFIX_M7}/common/debuglevel"
+                    simple_editors.create_selection_field(
+                        options={
+                            0: "off",
+                            1: "debug",
+                            2: "info",
+                            3: "warn",
+                            4: "error",
+                        },
+                        observer=webui_state.observer,
+                        topic=topic,
+                        field=mh.get_by_topic(topic).field,
+                    )
 
-                dict_tabs["/custom"] = ui.tab("customized")
+                with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
+                    topic = f"{util_constants.PREFIX_M7}/axis_x/value"
+                    simple_editors.create_slider_field(
+                        observer=webui_state.observer,
+                        topic=topic,
+                        field=mh.get_by_topic(topic).field,
+                    )
 
-            with ui.tab_panels(tabs).classes("w-full"):
-                for topic, item in mh.compounds.items():
-                    current_tab = dict_tabs[topic]
-                    with ui.tab_panel(current_tab).classes("w-full"):
-                        print(f"compount: {topic} - {item.model!r}")
-                        dump_elements(mh=item)
-
-                current_tab = dict_tabs["/custom"]
-                with ui.tab_panel(current_tab).classes("w-full"):
-                    ui.label("Customized")
-
-        else:
-            # Expansion
-            for _topic, item in mh.compounds.items():
-                with ui.expansion(item.title, value=True).classes("w-full"):
-                    # logger.debug(f"compound: {topic} - {item.model!r}")
-                    dump_elements(mh=item)
-
-            if False:
-                with ui.expansion("Custom", value=True).classes("w-full"):
-                    with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
-                        topic = f"{util_constants.PREFIX_M7}/common/debuglevel"
-                        simple_editors.create_selection_field(
-                            options={
-                                0: "off",
-                                1: "debug",
-                                2: "info",
-                                3: "warn",
-                                4: "error",
-                            },
-                            observer=webui_state.observer,
-                            topic=topic,
-                            field=mh.get_by_topic(topic).field,
-                        )
-
-                    with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
-                        topic = f"{util_constants.PREFIX_M7}/axis_x/value"
-                        simple_editors.create_slider_field(
-                            observer=webui_state.observer,
-                            topic=topic,
-                            field=mh.get_by_topic(topic).field,
-                        )
-
-                    with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
-                        ui.code().bind_content_from(webui_state, "hierarchy_text")
+                with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
+                    ui.code().bind_content_from(webui_state, "hierarchy_text")
 
     dump(mh=webui_state.hierarchy)
 

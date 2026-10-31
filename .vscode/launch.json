@@ -30,7 +30,7 @@
             "justMyCode": false
         },
         {
-            "name": "web EMW",
+            "name": "web EMW uvicorn",
             "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",

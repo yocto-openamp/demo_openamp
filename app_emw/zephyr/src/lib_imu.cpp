@@ -56,13 +56,13 @@ bool verify_sensor_id() {
     return true;
 }
 
+#if LOG_IMU == 1
 struct FormattedSensorValue {
     const char *sign;
     int32_t whole;
     uint32_t fraction;
 };
 
-#if LOG_IMU == 1
 FormattedSensorValue format_sensor_value(const sensor_value &value) {
     const int64_t millionths =
         static_cast<int64_t>(value.val1) * 1000000 + value.val2;
@@ -118,18 +118,12 @@ void send_imu_status(rpmsg::Endpoint &status_endpoint) {
     imu_status.header.msg_id =
         static_cast<int16_t>(commands::MSG_ID_M7_to_A53::IMU_STATUS);
     imu_status.header.msg_size = sizeof(imu_status);
-    imu_status.status.accel_x =
-        static_cast<double>(sensor_value_to_micro(&accel[0]));
-    imu_status.status.accel_y =
-        static_cast<double>(sensor_value_to_micro(&accel[1]));
-    imu_status.status.accel_z =
-        static_cast<double>(sensor_value_to_micro(&accel[2]));
-    imu_status.status.gyro_x =
-        static_cast<double>(sensor_value_to_micro(&gyro[0]));
-    imu_status.status.gyro_y =
-        static_cast<double>(sensor_value_to_micro(&gyro[1]));
-    imu_status.status.gyro_z =
-        static_cast<double>(sensor_value_to_micro(&gyro[2]));
+    imu_status.status.accel_x = sensor_value_to_float(&accel[0]);
+    imu_status.status.accel_y = sensor_value_to_float(&accel[1]);
+    imu_status.status.accel_z = sensor_value_to_float(&accel[2]);
+    imu_status.status.gyro_x = sensor_value_to_float(&gyro[0]);
+    imu_status.status.gyro_y = sensor_value_to_float(&gyro[1]);
+    imu_status.status.gyro_z = sensor_value_to_float(&gyro[2]);
     const int result = status_endpoint.send(&imu_status, sizeof(imu_status));
     if (result < 0) {
         LOG_WRN("Could not send IMU status: %d", result);
