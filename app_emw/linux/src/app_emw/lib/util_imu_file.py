@@ -1,4 +1,7 @@
 import numpy as np
+from app_emw.lib import util_constants
+
+IMU_MEASUREMENTS_FILE = util_constants.DIRECTORY_DATA / "imu_measurements.bin"
 
 # Packed measurement_t in main.cpp.
 IMU_MEASUREMENT_DTYPE: np.dtype = np.dtype(

@@ -18,6 +18,29 @@
             "program": "${workspaceFolder}/demo_datadefinition/linux/main_simple_json.py",
             "args": [],
             "jinja": true
+        },
+        {
+            "name": "web EMW app",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "app_emw.appweb.main_appweb_emw",
+            "args": [],
+            "env": {},
+            "jinja": true,
+            "justMyCode": false
+        },
+        {
+            "name": "web EMW",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "app_emw.appweb.main_appweb_emw:app",
+                "--reload",
+            ],
+            "env": {},
+            "jinja": true,
+            "justMyCode": false
         }
     ]
 }

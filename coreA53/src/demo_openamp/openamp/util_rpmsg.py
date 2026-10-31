@@ -13,11 +13,11 @@ import types
 import typing
 import weakref
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
-_endpoint_locks: weakref.WeakKeyDictionary[
-    asyncio.AbstractEventLoop, asyncio.Lock
-] = weakref.WeakKeyDictionary()
+_endpoint_locks: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = (
+    weakref.WeakKeyDictionary()
+)
 _endpoint_locks_guard = threading.Lock()
 
 

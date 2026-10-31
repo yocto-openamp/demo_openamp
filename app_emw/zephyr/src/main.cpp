@@ -14,14 +14,14 @@ namespace {
 
 rpmsg::Transport transport;
 
-int echo(rpmsg::Endpoint &endpoint, const void *data, std::size_t size,
+int echo(rpmsg::Endpoint &endpoint_cmd, const void *data, std::size_t size,
          std::uint32_t, void *) {
     LOG_INF("RPMsg received %u bytes: '%.*s'", static_cast<unsigned int>(size),
             static_cast<int>(size), static_cast<const char *>(data));
-    return endpoint.send(data, size);
+    return endpoint_cmd.send(data, size);
 }
 
-rpmsg::Endpoint app_endpoint{"rpmsg-emw-APP", echo};
+rpmsg::Endpoint endpoint_cmd{"rpmsg-emw-CMD", echo};
 
 void rpmsg_manager(void *, void *, void *) {
     if (transport.initialize() != 0) {
@@ -30,7 +30,7 @@ void rpmsg_manager(void *, void *, void *) {
     transport.process_messages();
 }
 
-void imu_runner(void *, void *, void *) { imu::run(app_endpoint); }
+void imu_runner(void *, void *, void *) { imu::run(endpoint_cmd); }
 
 K_THREAD_DEFINE(rpmsg_manager_thread, APP_TASK_STACK_SIZE, rpmsg_manager, NULL, NULL, NULL,
                 K_PRIO_COOP(8), 0, SYS_FOREVER_MS);
@@ -44,18 +44,18 @@ int main(void) {
 
     k_thread_start(rpmsg_manager_thread);
 
-    int result = transport.attach(app_endpoint);
+    int result = transport.attach(endpoint_cmd);
     if (result != 0) {
-        LOG_ERR("Could not create RPMsg endpoint: %d", result);
+        LOG_ERR("Could not create CMD RPMsg endpoint_cmd: %d", result);
     } else {
-        LOG_INF("Linux RPMsg App endpoint is ready");
+        LOG_INF("Linux RPMsg App endpoint_cmd is ready");
     }
 
-    result = transport.attach(imu::endpoint);
+    result = transport.attach(imu::endpoint_imu);
     if (result != 0) {
-        LOG_ERR("Could not create IMU RPMsg endpoint: %d", result);
+        LOG_ERR("Could not create IMU RPMsg endpoint_imu: %d", result);
     } else {
-        LOG_INF("Linux RPMsg IMU endpoint is ready");
+        LOG_INF("Linux RPMsg IMU endpoint_imu is ready");
     }
 
     k_thread_start(imu_thread);
