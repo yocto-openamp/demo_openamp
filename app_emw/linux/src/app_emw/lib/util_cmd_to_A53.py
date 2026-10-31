@@ -1,6 +1,8 @@
+import abc
 import ctypes
 import enum
 import time
+import typing
 
 from app_emw.datamodel.imu_status import ModelImuStatus
 from app_emw.lib.util_cmd import MsgHeader
@@ -45,43 +47,71 @@ async def handle_cmd_pingpong(rpmsg_cmd: Rpmsg) -> None:
     )
 
 
-async def handle_msg_to_A53(rpmsg_cmd: Rpmsg) -> None:
-    renderer = RendererCPP(model=ModelImuStatus())
-    header_size = ctypes.sizeof(MsgHeader)
-    status_size = ctypes.sizeof(renderer.ctypes_model)
+class HandlerCmdA53(abc.ABC):
+    """
+    Async method which dispatches messages to
+    methods which must be overridden.
+    """
 
-    while True:
-        payload = await rpmsg_cmd.read(512)
-        if not payload:
-            raise RuntimeError("RPMsg endpoint closed")
-        if len(payload) < header_size:
-            raise RuntimeError(f"RPMsg payload too short for header: {len(payload)}")
-        header = MsgHeader.from_buffer_copy(payload)
-        if header.msg_size != len(payload):
-            print(
-                "WARNING:"
-                f"Message size mismatch: header announces {header.msg_size},"
-                f" received {len(payload)}"
-            )
-            continue
+    _HEADER_SIZE = ctypes.sizeof(MsgHeader)
+
+    async def handle_msg_to_A53(self, rpmsg_cmd: Rpmsg) -> None:
+
+        while True:
+            payload_rpmsg = await rpmsg_cmd.read(512)
+            if not payload_rpmsg:
+                raise RuntimeError("RPMsg endpoint closed")
+            if len(payload_rpmsg) < self._HEADER_SIZE:
+                raise RuntimeError(
+                    f"RPMsg payload too short for header: {len(payload_rpmsg)}"
+                )
+            header = MsgHeader.from_buffer_copy(payload_rpmsg)
+            if header.msg_size != len(payload_rpmsg):
+                print(
+                    "WARNING:"
+                    f"Message size mismatch: header announces {header.msg_size},"
+                    f" received {len(payload_rpmsg)}"
+                )
+                continue
+
+            self._handle_msg(header=header, payload_rpmsg=payload_rpmsg)
+
+    def _handle_msg(self, header: MsgHeader, payload_rpmsg: bytes) -> None:
+        assert isinstance(header, MsgHeader)
+        assert isinstance(payload_rpmsg, bytes)
+
+        payload_cmd = payload_rpmsg[self._HEADER_SIZE :]
+
         match header.msg_id:
             case MSG_ID_M7_to_A53.IMU_STATUS:
-                if len(payload) != header_size + status_size:
-                    raise RuntimeError(f"Unexpected IMU status size {len(payload)}")
+                renderer = RendererCPP(model=ModelImuStatus())
+                status_size = ctypes.sizeof(renderer.ctypes_model)
+                if len(payload_cmd) != status_size:
+                    raise RuntimeError(f"Unexpected IMU status size {len(payload_cmd)}")
 
-                status = renderer.deserialize_from_cpp(payload[header_size:])
-                assert isinstance(status, ModelImuStatus)
+                imu_status = renderer.deserialize_from_cpp(payload_cmd)
+                assert isinstance(imu_status, ModelImuStatus)
 
-                # Accel values are in m/s^2, gyro values in rad/s.
-                print(
-                    f"IMU status: count={status.measurement_count}"
-                    f" errors={status.measurement_count_error}"
-                    f" accel={status.accel_x / 1e6:+6.3f}"
-                    f"/{status.accel_y / 1e6:+6.3f}"
-                    f"/{status.accel_z / 1e6:+6.3f}"
-                    f" gyro={status.gyro_x / 1e6:+6.3f}"
-                    f"/{status.gyro_y / 1e6:+6.3f}"
-                    f"/{status.gyro_z / 1e6:+6.3f}"
-                )
+                self.handle_imu_status(imu_status=imu_status)
             case _:
                 raise RuntimeError(f"Unexpected message id {header.msg_id}")
+
+    @abc.abstractmethod
+    def handle_imu_status(self, imu_status: ModelImuStatus) -> None: ...
+
+
+class HandlerCmdA53Console(HandlerCmdA53):
+    @typing.override
+    def handle_imu_status(self, imu_status: ModelImuStatus) -> None:
+        assert isinstance(imu_status, ModelImuStatus)
+        # Accel values are in m/s^2, gyro values in rad/s.
+        print(
+            f"IMU status: count={imu_status.measurement_count}"
+            f" errors={imu_status.measurement_count_error}"
+            f" accel={imu_status.accel_x / 1e6:+6.3f}"
+            f"/{imu_status.accel_y / 1e6:+6.3f}"
+            f"/{imu_status.accel_z / 1e6:+6.3f}"
+            f" gyro={imu_status.gyro_x / 1e6:+6.3f}"
+            f"/{imu_status.gyro_y / 1e6:+6.3f}"
+            f"/{imu_status.gyro_z / 1e6:+6.3f}"
+        )

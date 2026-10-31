@@ -6,7 +6,7 @@ build-backend = "pdm.backend"
 name = "app_emw"
 version = "0.1.0"
 description = "EMW app running on a Toradex Verdin Board."
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2.0",
     "nicegui>=2.0",
