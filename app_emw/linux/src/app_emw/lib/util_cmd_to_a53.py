@@ -94,17 +94,53 @@ class HandlerCmdA53(abc.ABC):
                 assert isinstance(imu_status, datamodels_emw.ModelImuStatus)
 
                 self.handle_imu_status(imu_status=imu_status)
+
+            case MSG_ID_M7_to_A53.STATUS:
+                # This must match msg_m7_status_t in main.cpp.
+                renderer = RendererCPP(model=datamodels_emw.ModelM7StatusChannel())
+                channel_size = ctypes.sizeof(renderer.ctypes_model)
+                if len(payload_cmd) != 2 * channel_size:
+                    raise RuntimeError(f"Unexpected M7 status size {len(payload_cmd)}")
+
+                channel_cmd = renderer.deserialize_from_cpp(payload_cmd[:channel_size])
+                channel_imu = renderer.deserialize_from_cpp(payload_cmd[channel_size:])
+                assert isinstance(channel_cmd, datamodels_emw.ModelM7StatusChannel)
+                assert isinstance(channel_imu, datamodels_emw.ModelM7StatusChannel)
+
+                self.handle_m7_status(
+                    m7_status=datamodels_emw.ModelM7Status(
+                        channel_cmd=channel_cmd,
+                        channel_imu=channel_imu,
+                    )
+                )
             case _:
                 raise RuntimeError(f"Unexpected message id {header.msg_id}")
 
     @abc.abstractmethod
     def handle_imu_status(self, imu_status: datamodels_emw.ModelImuStatus) -> None: ...
 
+    @abc.abstractmethod
+    def handle_m7_status(self, m7_status: datamodels_emw.ModelM7Status) -> None: ...
+
 
 class HandlerCmdA53Console(HandlerCmdA53):
     @typing.override
     def handle_imu_status(self, imu_status: datamodels_emw.ModelImuStatus) -> None:
         self.print(imu_status=imu_status)
+
+    @typing.override
+    def handle_m7_status(self, m7_status: datamodels_emw.ModelM7Status) -> None:
+        assert isinstance(m7_status, datamodels_emw.ModelM7Status)
+        for name, channel in (
+            ("CMD", m7_status.channel_cmd),
+            ("IMU", m7_status.channel_imu),
+        ):
+            print(
+                f"M7 channel {name}: tx_ok={channel.tx_ok}"
+                f" tx_err={channel.tx_err}"
+                f" tx_last_err={channel.tx_last_err}"
+                f" rx_ok={channel.rx_ok}"
+            )
 
     @staticmethod
     def print(imu_status: datamodels_emw.ModelImuStatus) -> None:

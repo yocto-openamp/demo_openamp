@@ -51,16 +51,28 @@ int Endpoint::bind(struct rpmsg_device *device) {
 }
 
 int Endpoint::send(const void *data, std::size_t size) {
-    if (!bound_) {
-        return -ENOTCONN;
+    const int result = bound_ ? rpmsg_send(&endpoint_, data, size) : -ENOTCONN;
+    if (result >= 0 && static_cast<std::size_t>(result) == size) {
+        atomic_inc(&tx_ok_);
+    } else {
+        atomic_inc(&tx_err_);
+        atomic_set(&tx_last_err_, result < 0 ? -result : EMSGSIZE);
     }
-    return rpmsg_send(&endpoint_, data, size);
+    return result;
+}
+
+Counters Endpoint::counters() const {
+    return {static_cast<std::uint32_t>(atomic_get(&tx_ok_)),
+            static_cast<std::uint32_t>(atomic_get(&tx_err_)),
+            static_cast<std::uint32_t>(atomic_get(&tx_last_err_)),
+            static_cast<std::uint32_t>(atomic_get(&rx_ok_))};
 }
 
 int Endpoint::receive_callback(struct rpmsg_endpoint *, void *data,
                                std::size_t size, std::uint32_t source,
                                void *priv) {
     auto &endpoint = *static_cast<Endpoint *>(priv);
+    atomic_inc(&endpoint.rx_ok_);
     return endpoint.handler_(endpoint, data, size, source, endpoint.context_);
 }
 

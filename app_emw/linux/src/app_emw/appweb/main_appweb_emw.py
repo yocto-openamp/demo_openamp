@@ -67,6 +67,19 @@ class HandlerCmdA53(util_cmd_to_a53.HandlerCmdA53):
             data=imu_status,
         )
 
+    @typing.override
+    def handle_m7_status(self, m7_status: datamodels_emw.ModelM7Status) -> None:
+        assert isinstance(m7_status, datamodels_emw.ModelM7Status)
+
+        self._notify(
+            topic=f"{util_constants.PREFIX_M7}/status/channel_cmd",
+            data=m7_status.channel_cmd,
+        )
+        self._notify(
+            topic=f"{util_constants.PREFIX_M7}/status/channel_imu",
+            data=m7_status.channel_imu,
+        )
+
 
 class WebUIState:
     def __init__(self) -> None:
@@ -150,9 +163,8 @@ async def create_app() -> None:
     def dump_elements(mh: util_pydantic.ModelHierarchy) -> None:
         assert isinstance(mh, util_pydantic.ModelHierarchy)
 
-        for _topic, _hierarchy in mh.compounds.items():
+        for _hierarchy in mh.compounds.values():
             with ui.expansion(_hierarchy.title, value=True).classes("w-full"):
-                # logger.debug(f"compound: {topic} - {item.model!r}")
                 dump_elements(mh=_hierarchy)
 
         for topic, item in mh.elements.items():

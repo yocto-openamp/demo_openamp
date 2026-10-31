@@ -21,6 +21,60 @@ class ModelImuSHT40(pydantic.BaseModel):
     )
 
 
+class ModelM7StatusChannel(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(validate_assignment=True)
+
+    tx_ok: int = pydantic.Field(
+        default=0,
+        ge=0,
+        le=2**32 - 1,
+        json_schema_extra=SchemaExtra(
+            unit="[1]",
+            comment="Transmit ok count",
+        ).dict,
+    )
+
+    tx_err: int = pydantic.Field(
+        default=0,
+        ge=0,
+        le=2**32 - 1,
+        json_schema_extra=SchemaExtra(
+            unit="[1]",
+            comment="Transmit error count",
+        ).dict,
+    )
+
+    tx_last_err: int = pydantic.Field(
+        default=0,
+        ge=0,
+        le=2**32 - 1,
+        json_schema_extra=SchemaExtra(
+            unit="[1]",
+            comment="Last Transmit Error Code (absolute value)",
+        ).dict,
+    )
+    rx_ok: int = pydantic.Field(
+        default=0,
+        ge=0,
+        le=2**32 - 1,
+        json_schema_extra=SchemaExtra(
+            unit="[1]",
+            comment="Receive ok count",
+        ).dict,
+    )
+
+
+class ModelM7Status(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(validate_assignment=True)
+
+    channel_cmd: ModelM7StatusChannel = pydantic.Field(
+        default_factory=lambda: ModelM7StatusChannel(),
+    )
+    channel_imu: ModelM7StatusChannel = pydantic.Field(
+        default_factory=lambda: ModelM7StatusChannel(),
+    )
+
+
 class ModelImuStatus(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
@@ -120,6 +174,9 @@ class ModelCommon(pydantic.BaseModel):
 class ModelM7(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
+    status: ModelM7Status = pydantic.Field(
+        default_factory=lambda: ModelM7Status(),
+    )
     imu_status: ModelImuStatus = pydantic.Field(
         default_factory=lambda: ModelImuStatus(),
     )

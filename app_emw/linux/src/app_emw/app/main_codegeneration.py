@@ -2,7 +2,7 @@ import pathlib
 
 from experiment_datadefinitions.renderer.renderer_cpp import RendererCPP
 
-from app_emw.datamodel.datamodels_emw import ModelImuStatus
+from app_emw.datamodel.datamodels_emw import ModelImuStatus, ModelM7StatusChannel
 
 DIRECTORY_OF_THIS_FILE = pathlib.Path(__file__).resolve().parent
 DIRECTORY_ZEPHYR_SRC = DIRECTORY_OF_THIS_FILE.parents[3] / "zephyr" / "src"
@@ -19,15 +19,22 @@ FILE_HEADER = """\
 def main() -> int:
     assert DIRECTORY_ZEPHYR_SRC.is_dir(), DIRECTORY_ZEPHYR_SRC
 
-    model = ModelImuStatus()
-    renderer = RendererCPP(model=model)
+    # RendererCPP does not support nested models: ModelM7Status is composed by
+    # hand in main.cpp and util_cmd_to_a53.py.
+    for filename, model in (
+        ("generated_imu_status.hpp", ModelImuStatus()),
+        ("generated_m7_status_channel.hpp", ModelM7StatusChannel()),
+    ):
+        renderer = RendererCPP(model=model)
 
-    source = (
-        FILE_HEADER + renderer.render_cpp_struct() + renderer.render_cpp_initializer()
-    )
-    output_file = DIRECTORY_ZEPHYR_SRC / "generated_imu_status.hpp"
-    output_file.write_text(source)
-    print(f"Wrote {output_file}")
+        source = (
+            FILE_HEADER
+            + renderer.render_cpp_struct()
+            + renderer.render_cpp_initializer()
+        )
+        output_file = DIRECTORY_ZEPHYR_SRC / filename
+        output_file.write_text(source)
+        print(f"Wrote {output_file}")
     return 0
 
 

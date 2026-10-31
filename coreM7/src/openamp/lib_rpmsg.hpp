@@ -10,6 +10,7 @@
 
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/atomic.h>
 
 #include <metal/io.h>
 #include <openamp/open_amp.h>
@@ -17,6 +18,16 @@
 namespace rpmsg {
 
 class Transport;
+
+/**
+ * @brief Snapshot of the live counters of an Endpoint.
+ */
+struct Counters {
+    std::uint32_t tx_ok;
+    std::uint32_t tx_err;
+    std::uint32_t tx_last_err; // Absolute value of the last error code.
+    std::uint32_t rx_ok;
+};
 
 /**
  * @brief Represents an RPMsg channel endpoint with a receive callback.
@@ -35,6 +46,7 @@ class Endpoint {
     Endpoint &operator=(const Endpoint &) = delete;
 
     int send(const void *data, std::size_t size);
+    Counters counters() const;
 
   private:
     friend class Transport;
@@ -49,6 +61,11 @@ class Endpoint {
     ReceiveHandler handler_;
     void *context_;
     bool bound_{false};
+    // Atomic: an endpoint may be used by several threads.
+    atomic_t tx_ok_{0};
+    atomic_t tx_err_{0};
+    atomic_t tx_last_err_{0};
+    atomic_t rx_ok_{0};
 };
 
   /**
