@@ -2,6 +2,25 @@ import pydantic
 from experiment_datadefinitions.utils.util_pydantic import SchemaExtra
 
 
+class ModelImuSHT40(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(validate_assignment=True)
+
+    temperature: float = pydantic.Field(
+        default=0.0,
+        json_schema_extra=SchemaExtra(
+            unit="[°C]",
+            comment="Temperature",
+        ).dict,
+    )
+    humidity: float = pydantic.Field(
+        default=0.0,
+        json_schema_extra=SchemaExtra(
+            unit="[%]",
+            comment="Humidity",
+        ).dict,
+    )
+
+
 class ModelImuStatus(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
@@ -89,12 +108,37 @@ class ModelCommon(pydantic.BaseModel):
     )
 
 
-class ModelEMW(pydantic.BaseModel):
+class ModelM7(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(validate_assignment=True)
+
+    imu_status: ModelImuStatus = pydantic.Field(
+        default_factory=lambda: ModelImuStatus(),
+    )
+
+
+class ModelA53(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
     common: ModelCommon = pydantic.Field(
         default_factory=lambda: ModelCommon(),
     )
-    imu_status: ModelImuStatus = pydantic.Field(
-        default_factory=lambda: ModelImuStatus(),
+    sht40_intern: ModelImuSHT40 = pydantic.Field(
+        default_factory=lambda: ModelImuSHT40(),
+    )
+    sht40_extern: ModelImuSHT40 = pydantic.Field(
+        default_factory=lambda: ModelImuSHT40(),
+    )
+
+
+class ModelEMW(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(validate_assignment=True)
+
+    # Same as util_constants.PREFIX_A53
+    a53: ModelImuStatus = pydantic.Field(
+        default_factory=lambda: ModelA53(),
+    )
+
+    # Same as util_constants.PREFIX_M7
+    m7: ModelImuStatus = pydantic.Field(
+        default_factory=lambda: ModelM7(),
     )

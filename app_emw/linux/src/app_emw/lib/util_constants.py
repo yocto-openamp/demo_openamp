@@ -6,7 +6,7 @@ assert DIRECTORY_DATA.is_dir()
 
 
 PREFIX_M7 = "/m7"
-PREFIX_M53 = "/a53"
+PREFIX_A53 = "/a53"
 
 
 # These must match the endpoint names in main.cpp.

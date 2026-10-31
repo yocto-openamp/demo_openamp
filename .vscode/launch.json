@@ -30,6 +30,16 @@
             "justMyCode": false
         },
         {
+            "name": "EMW app",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "app_emw.app.main_app_emw",
+            "args": [],
+            "env": {},
+            "jinja": true,
+            "justMyCode": false
+        },
+        {
             "name": "web EMW uvicorn",
             "type": "debugpy",
             "request": "launch",

@@ -104,6 +104,10 @@ class HandlerCmdA53(abc.ABC):
 class HandlerCmdA53Console(HandlerCmdA53):
     @typing.override
     def handle_imu_status(self, imu_status: datamodels_emw.ModelImuStatus) -> None:
+        self.print(imu_status=imu_status)
+
+    @staticmethod
+    def print(imu_status: datamodels_emw.ModelImuStatus) -> None:
         assert isinstance(imu_status, datamodels_emw.ModelImuStatus)
         # Accel values are in m/s^2, gyro values in rad/s.
         print(

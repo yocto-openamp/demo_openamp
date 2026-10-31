@@ -26,6 +26,7 @@ from app_emw.lib import (
     util_app_emw,
     util_cmd_to_a53,
     util_constants,
+    util_datasource_sht40,
     util_logging,
 )
 
@@ -57,18 +58,9 @@ class HandlerCmdA53(util_cmd_to_a53.HandlerCmdA53):
     @typing.override
     def handle_imu_status(self, imu_status: datamodels_emw.ModelImuStatus) -> None:
         assert isinstance(imu_status, datamodels_emw.ModelImuStatus)
+
         if False:
-            # Accel values are in m/s^2, gyro values in rad/s.
-            print(
-                f"IMU status: count={imu_status.measurement_count}"
-                f" errors={imu_status.measurement_count_error}"
-                f" accel={imu_status.accel_x:+6.3f}"
-                f"/{imu_status.accel_y:+6.3f}"
-                f"/{imu_status.accel_z:+6.3f}"
-                f" gyro={imu_status.gyro_x:+6.3f}"
-                f"/{imu_status.gyro_y:+6.3f}"
-                f"/{imu_status.gyro_z:+6.3f}"
-            )
+            util_cmd_to_a53.HandlerCmdA53Console.print(imu_status=imu_status)
 
         self._notify(
             topic=f"{util_constants.PREFIX_M7}/imu_status",
@@ -84,7 +76,7 @@ class WebUIState:
 
         self.hierarchy = util_pydantic.ModelHierarchy.factory(
             model=self.model,
-            prefix=f"{util_constants.PREFIX_M7}",
+            prefix="/",
         )
         for element in self.hierarchy.all_elements:
             self.observer.send_message(
@@ -133,6 +125,12 @@ async def lifespan(_app: FastAPI):
     )
     task_app_emw.add_done_callback(_log_task_result)
 
+    task_sht40 = asyncio.create_task(
+        util_datasource_sht40.sht40_task(observer=webui_state.observer),
+        name="sht40_task",
+    )
+    task_sht40.add_done_callback(_log_task_result)
+
     try:
         yield
     finally:
@@ -148,6 +146,12 @@ async def create_app() -> None:
     # with ui.column().classes("w-full max-w-2xl gap-0 p-4"):
     def dump_elements(mh: util_pydantic.ModelHierarchy) -> None:
         assert isinstance(mh, util_pydantic.ModelHierarchy)
+
+        for _topic, item in mh.compounds.items():
+            with ui.expansion(item.title, value=True).classes("w-full"):
+                # logger.debug(f"compound: {topic} - {item.model!r}")
+                dump_elements(mh=item)
+
         for topic, item in mh.elements.items():
             # logger.debug(f"element:  {topic} - {item.value_type_name}")
             try:
@@ -161,44 +165,7 @@ async def create_app() -> None:
             with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
                 f_create_field(observer=webui_state.observer, topic=topic, field=item)  # type: ignore[call-arg]
 
-    def dump(mh: util_pydantic.ModelHierarchy) -> None:
-        assert isinstance(mh, util_pydantic.ModelHierarchy)
-
-        # Expansion
-        for _topic, item in mh.compounds.items():
-            with ui.expansion(item.title, value=True).classes("w-full"):
-                # logger.debug(f"compound: {topic} - {item.model!r}")
-                dump_elements(mh=item)
-
-        if False:
-            with ui.expansion("Custom", value=True).classes("w-full"):
-                with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
-                    topic = f"{util_constants.PREFIX_M7}/common/debuglevel"
-                    simple_editors.create_selection_field(
-                        options={
-                            0: "off",
-                            1: "debug",
-                            2: "info",
-                            3: "warn",
-                            4: "error",
-                        },
-                        observer=webui_state.observer,
-                        topic=topic,
-                        field=mh.get_by_topic(topic).field,
-                    )
-
-                with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
-                    topic = f"{util_constants.PREFIX_M7}/axis_x/value"
-                    simple_editors.create_slider_field(
-                        observer=webui_state.observer,
-                        topic=topic,
-                        field=mh.get_by_topic(topic).field,
-                    )
-
-                with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
-                    ui.code().bind_content_from(webui_state, "hierarchy_text")
-
-    dump(mh=webui_state.hierarchy)
+    dump_elements(mh=webui_state.hierarchy)
 
 
 @ui.page("/")
