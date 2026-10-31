@@ -22,7 +22,7 @@
             "type": "shell",
             "command": ". .venv/bin/activate && ruff check --config pyproject.toml --fix || true",
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}/app_emw"
             },
             "problemMatcher": [],
             "group": {
@@ -33,9 +33,9 @@
         {
             "label": "mypy",
             "type": "shell",
-            "command": ". .venv/bin/activate && python -m mypy --config-file pyproject.toml coreA53/src coreA53/tests || true",
+            "command": ". .venv/bin/activate && python -m mypy --config-file pyproject.toml ../coreA53/src ../coreA53/tests linux/src || true",
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}/app_emw"
             },
             "problemMatcher": [],
             "group": {

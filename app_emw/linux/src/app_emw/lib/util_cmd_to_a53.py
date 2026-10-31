@@ -4,10 +4,11 @@ import enum
 import time
 import typing
 
-from app_emw.datamodel.imu_status import ModelImuStatus
-from app_emw.lib.util_cmd import MsgHeader
 from demo_openamp.openamp.util_rpmsg import Rpmsg
-from renderer.renderer_cpp import RendererCPP
+from experiment_datadefinitions.renderer.renderer_cpp import RendererCPP
+
+from app_emw.datamodel import datamodels_emw
+from app_emw.lib.util_cmd import MsgHeader
 
 
 # These must match messages_to_A53.hpp.
@@ -84,26 +85,26 @@ class HandlerCmdA53(abc.ABC):
 
         match header.msg_id:
             case MSG_ID_M7_to_A53.IMU_STATUS:
-                renderer = RendererCPP(model=ModelImuStatus())
+                renderer = RendererCPP(model=datamodels_emw.ModelImuStatus())
                 status_size = ctypes.sizeof(renderer.ctypes_model)
                 if len(payload_cmd) != status_size:
                     raise RuntimeError(f"Unexpected IMU status size {len(payload_cmd)}")
 
                 imu_status = renderer.deserialize_from_cpp(payload_cmd)
-                assert isinstance(imu_status, ModelImuStatus)
+                assert isinstance(imu_status, datamodels_emw.ModelImuStatus)
 
                 self.handle_imu_status(imu_status=imu_status)
             case _:
                 raise RuntimeError(f"Unexpected message id {header.msg_id}")
 
     @abc.abstractmethod
-    def handle_imu_status(self, imu_status: ModelImuStatus) -> None: ...
+    def handle_imu_status(self, imu_status: datamodels_emw.ModelImuStatus) -> None: ...
 
 
 class HandlerCmdA53Console(HandlerCmdA53):
     @typing.override
-    def handle_imu_status(self, imu_status: ModelImuStatus) -> None:
-        assert isinstance(imu_status, ModelImuStatus)
+    def handle_imu_status(self, imu_status: datamodels_emw.ModelImuStatus) -> None:
+        assert isinstance(imu_status, datamodels_emw.ModelImuStatus)
         # Accel values are in m/s^2, gyro values in rad/s.
         print(
             f"IMU status: count={imu_status.measurement_count}"

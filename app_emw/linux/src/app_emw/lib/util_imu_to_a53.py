@@ -1,8 +1,9 @@
 import pathlib
 
-from app_emw.lib.util_cmd_to_M7 import RPMSG_IMU_START
-from app_emw.lib.util_imu_file import IMU_MEASUREMENT_SIZE
 from demo_openamp.openamp.util_rpmsg import Rpmsg
+
+from app_emw.lib.util_cmd_to_m7 import RPMSG_IMU_START
+from app_emw.lib.util_imu_file import IMU_MEASUREMENT_SIZE
 
 
 async def init_imu(rpmsg_imu: Rpmsg) -> None:

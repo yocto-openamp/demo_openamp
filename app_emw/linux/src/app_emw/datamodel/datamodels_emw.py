@@ -1,5 +1,5 @@
 import pydantic
-from utils.util_pydantic import SchemaExtra
+from experiment_datadefinitions.utils.util_pydantic import SchemaExtra
 
 
 class ModelImuStatus(pydantic.BaseModel):

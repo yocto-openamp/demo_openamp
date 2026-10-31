@@ -53,7 +53,6 @@ select = [
     "B",  # flake8-bugbear
     "C4",  # flake8-comprehensions
     "UP",  # pyupgrade
-    "N999", # invalid-module-name
 ]
 ignore = [
     "E501",  # line too long, handled by black
@@ -86,10 +85,6 @@ section-order = [
 
 [[tool.mypy.overrides]]
 module = "scipy.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "ad_low_noise_float_2023_decoder.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

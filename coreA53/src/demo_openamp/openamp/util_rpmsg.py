@@ -81,6 +81,7 @@ class Rpmsg:
                     duration_s = time.monotonic() - start_s
                     if duration_s > timout_s:
                         raise ValueError(f"Timeout while waiting for {self.endpoint}")
+                    assert isinstance(self.endpoint, pathlib.Path)
                     endpoint_readable = os.access(self.endpoint, os.R_OK)
                     if endpoint_readable:
                         logger.debug(

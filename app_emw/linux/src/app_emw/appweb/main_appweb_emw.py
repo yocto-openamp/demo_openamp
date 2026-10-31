@@ -3,31 +3,58 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import typing
 
 import uvicorn
-from app_emw.datamodel.imu_status import ModelEMW
-from app_emw.lib import util_app_emw, util_cmd_to_A53, util_constants, util_logging
-from fastapi import FastAPI
-from nicegui import ui
-from utils import (
+from experiment_datadefinitions.utils import (
     util_datasinks,
     util_datasources,
     util_pydantic,
 )
-from utils_observer.util_message import Message, MessageVerb
-from utils_observer.util_observer import Observer, Registration
-from webui.widgets import simple_editors
+from experiment_datadefinitions.utils_observer.util_message import Message, MessageVerb
+from experiment_datadefinitions.utils_observer.util_observer import (
+    Observer,
+    Registration,
+)
+from experiment_datadefinitions.webui.widgets import simple_editors
+from fastapi import FastAPI
+from nicegui import ui
+
+from app_emw.datamodel import datamodels_emw
+from app_emw.lib import (
+    util_app_emw,
+    util_cmd_to_a53,
+    util_constants,
+    util_logging,
+)
 
 logger = logging.getLogger(__name__)
 
 util_logging.init_logging()
 
 
+class HandlerCmdA53Console(util_cmd_to_a53.HandlerCmdA53):
+    @typing.override
+    def handle_imu_status(self, imu_status: datamodels_emw.ModelImuStatus) -> None:
+        assert isinstance(imu_status, datamodels_emw.ModelImuStatus)
+        # Accel values are in m/s^2, gyro values in rad/s.
+        print(
+            f"IMU status: count={imu_status.measurement_count}"
+            f" errors={imu_status.measurement_count_error}"
+            f" accel={imu_status.accel_x / 1e6:+6.3f}"
+            f"/{imu_status.accel_y / 1e6:+6.3f}"
+            f"/{imu_status.accel_z / 1e6:+6.3f}"
+            f" gyro={imu_status.gyro_x / 1e6:+6.3f}"
+            f"/{imu_status.gyro_y / 1e6:+6.3f}"
+            f"/{imu_status.gyro_z / 1e6:+6.3f}"
+        )
+
+
 class WebUIState:
     def __init__(self) -> None:
         self.observer = Observer()
-        self.model = ModelEMW()
-        self.handler_cmd_A53_console = util_cmd_to_A53.HandlerCmdA53Console()
+        self.model = datamodels_emw.ModelEMW()
+        self.handler_cmd_A53_console = util_cmd_to_a53.HandlerCmdA53Console()
 
         self.hierarchy = util_pydantic.ModelHierarchy.factory(
             model=self.model,
@@ -75,7 +102,7 @@ async def lifespan(_app: FastAPI):
     util_datasinks.logger_sink(observer=webui_state.observer)
 
     task_app_emw = asyncio.create_task(
-        util_app_emw.app_emw(handler_cmd_A53=webui_state.handler_cmd_A53_console),
+        util_app_emw.app_emw(handler_cmd_a53=webui_state.handler_cmd_A53_console),
         name="app_emw",
     )
     task_app_emw.add_done_callback(_log_task_result)

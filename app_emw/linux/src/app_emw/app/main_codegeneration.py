@@ -1,7 +1,8 @@
 import pathlib
 
-from app_emw.datamodel.imu_status import ModelImuStatus
-from renderer.renderer_cpp import RendererCPP
+from experiment_datadefinitions.renderer.renderer_cpp import RendererCPP
+
+from app_emw.datamodel.datamodels_emw import ModelImuStatus
 
 DIRECTORY_OF_THIS_FILE = pathlib.Path(__file__).resolve().parent
 DIRECTORY_ZEPHYR_SRC = DIRECTORY_OF_THIS_FILE.parents[3] / "zephyr" / "src"

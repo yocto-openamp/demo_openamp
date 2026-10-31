@@ -1,16 +1,16 @@
 import pathlib
 
 import numpy as np
-from app_emw.lib.util_constants import IMU_MEASUREMENTS_FILE
-from app_emw.lib.util_imu_file import IMU_MEASUREMENT_DTYPE, IMU_MEASUREMENT_SIZE
+
+from app_emw.lib import util_imu_file
 
 
 def dump_imu_measurements(input_file: pathlib.Path) -> None:
     size = input_file.stat().st_size
-    if size % IMU_MEASUREMENT_SIZE != 0:
+    if size % util_imu_file.IMU_MEASUREMENT_SIZE != 0:
         raise RuntimeError(f"Unexpected IMU file size {size}")
 
-    measurements = np.fromfile(input_file, dtype=IMU_MEASUREMENT_DTYPE)
+    measurements = np.fromfile(input_file, dtype=util_imu_file.IMU_MEASUREMENT_DTYPE)
 
     # Accel values are in m/s^2, gyro values in rad/s.
     print(f"{'timestamp_us':>14} {'sensor':<6} {'x':>12} {'y':>12} {'z':>12}")
@@ -37,7 +37,7 @@ def dump_imu_measurements(input_file: pathlib.Path) -> None:
 
 
 def main() -> None:
-    dump_imu_measurements(IMU_MEASUREMENTS_FILE)
+    dump_imu_measurements(util_imu_file.IMU_MEASUREMENTS_FILE)
 
 
 if __name__ == "__main__":
