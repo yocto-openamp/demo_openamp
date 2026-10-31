@@ -98,6 +98,15 @@ class ModelCommon(pydantic.BaseModel):
         ).dict,
     )
 
+    log_imu: int = pydantic.Field(
+        default=0,
+        ge=0,
+        le=1,
+        json_schema_extra=SchemaExtra(
+            comment="0: off, 1: loggin",
+        ).dict,
+    )
+
     debuglevel: int = pydantic.Field(
         default=3,
         ge=0,
@@ -134,11 +143,11 @@ class ModelEMW(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
     # Same as util_constants.PREFIX_A53
-    a53: ModelImuStatus = pydantic.Field(
+    a53: ModelA53 = pydantic.Field(
         default_factory=lambda: ModelA53(),
     )
 
     # Same as util_constants.PREFIX_M7
-    m7: ModelImuStatus = pydantic.Field(
+    m7: ModelM7 = pydantic.Field(
         default_factory=lambda: ModelM7(),
     )

@@ -120,7 +120,10 @@ async def lifespan(_app: FastAPI):
     util_datasinks.logger_sink(observer=webui_state.observer)
 
     task_app_emw = asyncio.create_task(
-        util_app_emw.app_emw(handler_cmd_a53=webui_state.handler_cmd_A53),
+        util_app_emw.app_emw(
+            handler_cmd_a53=webui_state.handler_cmd_A53,
+            observer=webui_state.observer,
+        ),
         name="app_emw",
     )
     task_app_emw.add_done_callback(_log_task_result)
@@ -147,10 +150,10 @@ async def create_app() -> None:
     def dump_elements(mh: util_pydantic.ModelHierarchy) -> None:
         assert isinstance(mh, util_pydantic.ModelHierarchy)
 
-        for _topic, item in mh.compounds.items():
-            with ui.expansion(item.title, value=True).classes("w-full"):
+        for _topic, _hierarchy in mh.compounds.items():
+            with ui.expansion(_hierarchy.title, value=True).classes("w-full"):
                 # logger.debug(f"compound: {topic} - {item.model!r}")
-                dump_elements(mh=item)
+                dump_elements(mh=_hierarchy)
 
         for topic, item in mh.elements.items():
             # logger.debug(f"element:  {topic} - {item.value_type_name}")
