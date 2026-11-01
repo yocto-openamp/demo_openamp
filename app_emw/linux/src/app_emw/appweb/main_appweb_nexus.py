@@ -49,6 +49,7 @@ def main() -> None:
 
     uvicorn.run(
         "app_emw.appweb.main_appweb_nexus:app",
+        host="0.0.0.0",
         port=util_constants.NEXUS_PORT,
         reload=True,
     )

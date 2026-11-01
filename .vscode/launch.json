@@ -28,7 +28,9 @@
                 "app_emw.appweb.main_appweb_mallow:app",
                 "--reload",
             ],
-            "env": {},
+            "env": {
+                "ENV_NEXUS_URL": "ws://192.168.1.57:8001/observer_push"
+            },
             "jinja": true,
             "justMyCode": false
         },
