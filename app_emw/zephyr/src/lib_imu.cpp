@@ -26,6 +26,8 @@ constexpr uint8_t ICM45686_WHO_AM_I = 0x72;
 constexpr uint8_t ICM45686_DEVICE_ID = 0xe9;
 constexpr uint32_t ACCEL_MEASUREMENTS_PER_GYRO = 10;
 constexpr int64_t IMU_STATUS_INTERVAL_MS = 1000;
+// Matches accel-odr and gyro-odr of 100 Hz in prj_verdin_imx8mp.overlay.
+constexpr int32_t IMU_SAMPLE_INTERVAL_MS = 10;
 
 bool verify_sensor_id() {
     const spi_dt_spec spi = SPI_DT_SPEC_GET(
@@ -171,6 +173,18 @@ void run(rpmsg::Endpoint &status_endpoint) {
     LOG_INF("Waiting for Linux to start IMU streaming");
     k_sem_take(&imu_ready, K_FOREVER);
 
+    // NOTE: This timer is not synchronized with the sensor: A sample may
+    // occasionally be read twice or missed, and timestamps are the read time.
+    // The proper fix is the data-ready interrupt: Add int-gpios to the overlay,
+    // enable a trigger mode such as CONFIG_ICM45686_TRIGGER_GLOBAL_THREAD and
+    // read in the trigger handler. This gives exactly one read per new sample
+    // and accurate timestamps, but requires the INT pin of the sensor to be
+    // wired to a GPIO.
+    k_timer sample_timer;
+    k_timer_init(&sample_timer, nullptr, nullptr);
+    k_timer_start(&sample_timer, K_MSEC(IMU_SAMPLE_INTERVAL_MS),
+                  K_MSEC(IMU_SAMPLE_INTERVAL_MS));
+
     uint32_t accel_count = 0;
     int64_t time_imu_status_to_be_sent_ms = 0;
     while (true) {
@@ -227,7 +241,7 @@ void run(rpmsg::Endpoint &status_endpoint) {
                 k_uptime_get() + IMU_STATUS_INTERVAL_MS;
         }
 
-        k_sleep(K_USEC(1));
+        k_timer_status_sync(&sample_timer);
     }
 }
 

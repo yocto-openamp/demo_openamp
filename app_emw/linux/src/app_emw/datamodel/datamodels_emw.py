@@ -106,6 +106,7 @@ class ModelImuStatus(pydantic.BaseModel):
         json_schema_extra=SchemaExtra(
             unit="m/s^2",
             comment="Accel",
+            format="%0.3f",
         ).dict,
     )
     accel_y: float = pydantic.Field(
@@ -113,6 +114,7 @@ class ModelImuStatus(pydantic.BaseModel):
         json_schema_extra=SchemaExtra(
             unit="m/s^2",
             comment="Accel",
+            format="%0.3f",
         ).dict,
     )
     accel_z: float = pydantic.Field(
@@ -120,6 +122,7 @@ class ModelImuStatus(pydantic.BaseModel):
         json_schema_extra=SchemaExtra(
             unit="m/s^2",
             comment="Accel",
+            format="%0.3f",
         ).dict,
     )
     gyro_x: float = pydantic.Field(
@@ -127,6 +130,7 @@ class ModelImuStatus(pydantic.BaseModel):
         json_schema_extra=SchemaExtra(
             unit="rad/s",
             comment="Gyro",
+            format="%0.3f",
         ).dict,
     )
     gyro_y: float = pydantic.Field(
@@ -134,6 +138,7 @@ class ModelImuStatus(pydantic.BaseModel):
         json_schema_extra=SchemaExtra(
             unit="rad/s",
             comment="Gyro",
+            format="%0.3f",
         ).dict,
     )
     gyro_z: float = pydantic.Field(
@@ -141,6 +146,7 @@ class ModelImuStatus(pydantic.BaseModel):
         json_schema_extra=SchemaExtra(
             unit="rad/s",
             comment="Gyro",
+            format="%0.3f",
         ).dict,
     )
 
