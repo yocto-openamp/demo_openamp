@@ -71,6 +71,13 @@ class ModelM7Status(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
+    git_commit: str = pydantic.Field(
+        default="",
+        json_schema_extra=SchemaExtra(
+            comment="The git commit of the firmware source",
+            cpp_string_len=64,
+        ).dict,
+    )
     channel_cmd: ModelM7StatusChannel = pydantic.Field(
         default_factory=lambda: ModelM7StatusChannel(),
     )

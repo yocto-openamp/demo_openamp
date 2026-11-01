@@ -45,10 +45,15 @@ class HandlerCmdA53(util_cmd_to_a53.HandlerCmdA53):
         assert isinstance(data, pydantic.BaseModel)
 
         for field in util_pydantic.FieldInfoIter.iter_model(data):
+            topic_field = f"{topic}/{field.field_name}"
             topic_value = getattr(data, field.field_name)
 
+            if isinstance(topic_value, pydantic.BaseModel):
+                self._notify(topic=topic_field, data=topic_value)
+                continue
+
             message = Message(
-                topic=f"{topic}/{field.field_name}",
+                topic=topic_field,
                 verb=MessageVerb.NOTIFY,
                 topic_value=topic_value,
             )
@@ -72,12 +77,8 @@ class HandlerCmdA53(util_cmd_to_a53.HandlerCmdA53):
         assert isinstance(m7_status, datamodels_emw.ModelM7Status)
 
         self._notify(
-            topic=f"{util_constants.PREFIX_M7}/status/channel_cmd",
-            data=m7_status.channel_cmd,
-        )
-        self._notify(
-            topic=f"{util_constants.PREFIX_M7}/status/channel_imu",
-            data=m7_status.channel_imu,
+            topic=f"{util_constants.PREFIX_M7}/status",
+            data=m7_status,
         )
 
 

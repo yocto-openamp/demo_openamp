@@ -1,4 +1,5 @@
 import pathlib
+import subprocess
 
 from experiment_datadefinitions.renderer.renderer_cpp import RendererCPP
 
@@ -16,8 +17,32 @@ FILE_HEADER = """\
 """
 
 
+def git_version() -> str:
+    result = subprocess.run(
+        [
+            "git",
+            "describe",
+            "--all",
+            "--long",
+            "--dirty",
+            "--always",
+        ],
+        cwd=DIRECTORY_OF_THIS_FILE,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
 def main() -> int:
     assert DIRECTORY_ZEPHYR_SRC.is_dir(), DIRECTORY_ZEPHYR_SRC
+
+    output_file = DIRECTORY_ZEPHYR_SRC / "generated_git_version.hpp"
+    output_file.write_text(
+        FILE_HEADER + f'\nconstexpr char GIT_VERSION[] = "{git_version()}";\n'
+    )
+    print(f"Wrote {output_file}")
 
     # Nested models are only referenced: Include the headers of
     # ModelM7StatusChannel before the headers of ModelM7Status!

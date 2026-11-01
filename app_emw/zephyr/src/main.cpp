@@ -1,3 +1,4 @@
+#include "generated_git_version.hpp"
 #include "generated_m7_status_channel_struct.hpp"
 #include "generated_m7_status_struct.hpp"
 #include "lib_imu.hpp"
@@ -9,6 +10,7 @@
 #include <zephyr/logging/log.h>
 
 #include <cstdint>
+#include <cstring>
 
 LOG_MODULE_REGISTER(app_emw);
 
@@ -17,6 +19,9 @@ LOG_MODULE_REGISTER(app_emw);
 namespace {
 
 constexpr int32_t M7_STATUS_INTERVAL_MS = 1000;
+
+static_assert(sizeof(GIT_VERSION) <= sizeof(ModelM7Status_t::git_commit),
+              "GIT_VERSION does not fit into git_commit");
 
 K_SEM_DEFINE(cmd_ready, 0, 1);
 
@@ -56,6 +61,7 @@ void send_m7_status() {
     msg.header.msg_id =
         static_cast<int16_t>(commands::MSG_ID_M7_to_A53::STATUS);
     msg.header.msg_size = sizeof(msg);
+    std::memcpy(msg.status.git_commit, GIT_VERSION, sizeof(GIT_VERSION));
     msg.status.channel_cmd = channel_status(endpoint_cmd);
     msg.status.channel_imu = channel_status(imu::endpoint_imu);
 
