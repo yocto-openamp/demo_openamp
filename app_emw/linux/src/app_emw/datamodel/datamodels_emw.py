@@ -63,6 +63,49 @@ class ModelM7StatusChannel(pydantic.BaseModel):
     )
 
 
+class ModelM7StatusIMU(pydantic.BaseModel):
+    cpp_filename: typing.ClassVar[str] = "m7_status_imu"
+
+    sample_fetch_err: int = pydantic.Field(
+        default=0,
+        json_schema_extra=SchemaExtra(
+            comment="IMU Sample Fetch Error",
+        ).dict,
+    )
+
+    sample_gap_max_us: int = pydantic.Field(
+        default=0,
+        json_schema_extra=SchemaExtra(
+            comment="IMU Sample Max Gap",
+        ).dict,
+    )
+
+
+class ModelM7StatusZephyr(pydantic.BaseModel):
+    cpp_filename: typing.ClassVar[str] = "m7_status_zephyr"
+
+    mailbox_notify_err: int = pydantic.Field(
+        default=0,
+        json_schema_extra=SchemaExtra(
+            comment="Mailbox Notify Error Count. Excluding -EBUSY: See mailbox_notify_coalesced",
+        ).dict,
+    )
+
+    mailbox_notify_coalesced: int = pydantic.Field(
+        default=0,
+        json_schema_extra=SchemaExtra(
+            comment="Mailbox Notify -EBUSY Count: The previous notify is still pending",
+        ).dict,
+    )
+
+    mailbox_last_error_code: int = pydantic.Field(
+        default=0,
+        json_schema_extra=SchemaExtra(
+            comment="Last Mailbox Notify Error Code (absolute value). Excluding -EBUSY",
+        ).dict,
+    )
+
+
 class ModelM7Status(pydantic.BaseModel):
     cpp_filename: typing.ClassVar[str] = "m7_status"
     """
@@ -78,6 +121,15 @@ class ModelM7Status(pydantic.BaseModel):
             cpp_string_len=64,
         ).dict,
     )
+
+    status_zephyr: ModelM7StatusZephyr = pydantic.Field(
+        default_factory=lambda: ModelM7StatusZephyr(),
+    )
+
+    status_imu: ModelM7StatusIMU = pydantic.Field(
+        default_factory=lambda: ModelM7StatusIMU(),
+    )
+
     channel_cmd: ModelM7StatusChannel = pydantic.Field(
         default_factory=lambda: ModelM7StatusChannel(),
     )

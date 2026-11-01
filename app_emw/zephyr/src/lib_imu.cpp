@@ -113,6 +113,9 @@ typedef struct __attribute__((packed)) {
 } msg_imu_status_t;
 
 msg_imu_status_t imu_status = {};
+// Atomic: written by 'run()' and read by 'status()' in another thread.
+atomic_t sample_fetch_err{0};
+atomic_t sample_gap_max_us{0};
 sensor_value accel[3];
 sensor_value gyro[3];
 
@@ -159,6 +162,11 @@ void send_measurement(uint64_t timestamp, const sensor_value (&values)[3],
 
 rpmsg::Endpoint endpoint_imu{"rpmsg-emw-IMU", start_imu};
 
+ModelM7StatusIMU_t status() {
+    return {static_cast<uint32_t>(atomic_get(&sample_fetch_err)),
+            static_cast<uint32_t>(atomic_get(&sample_gap_max_us))};
+}
+
 void run(rpmsg::Endpoint &status_endpoint) {
     if (!verify_sensor_id()) {
         return;
@@ -186,14 +194,25 @@ void run(rpmsg::Endpoint &status_endpoint) {
                   K_MSEC(IMU_SAMPLE_INTERVAL_MS));
 
     uint32_t accel_count = 0;
+    uint64_t timestamp_previous = 0;
     int64_t time_imu_status_to_be_sent_ms = 0;
     while (true) {
         int result = sensor_sample_fetch(sensor);
         if (result != 0) {
             LOG_ERR("ICM-45686 sample fetch failed: %d", result);
             ++imu_status.status.measurement_count_error;
+            atomic_inc(&sample_fetch_err);
         } else {
             const uint64_t timestamp = k_cyc_to_us_near64(k_cycle_get_64());
+
+            if (timestamp_previous != 0) {
+                const atomic_val_t gap_us =
+                    static_cast<atomic_val_t>(timestamp - timestamp_previous);
+                if (gap_us > atomic_get(&sample_gap_max_us)) {
+                    atomic_set(&sample_gap_max_us, gap_us);
+                }
+            }
+            timestamp_previous = timestamp;
 
             result = sensor_channel_get(sensor, SENSOR_CHAN_ACCEL_XYZ, accel);
             if (result != 0) {

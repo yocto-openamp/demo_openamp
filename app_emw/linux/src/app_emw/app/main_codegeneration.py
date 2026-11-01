@@ -44,11 +44,13 @@ def main() -> int:
     )
     print(f"Wrote {output_file}")
 
-    # Nested models are only referenced: Include the headers of
-    # ModelM7StatusChannel before the headers of ModelM7Status!
+    # Nested models are only referenced: Include the headers of ModelM7StatusChannel,
+    # ModelM7StatusIMU and ModelM7StatusZephyr before the headers of ModelM7Status!
     for model in (
         datamodels_emw.ModelImuStatus(),
         datamodels_emw.ModelM7StatusChannel(),
+        datamodels_emw.ModelM7StatusIMU(),
+        datamodels_emw.ModelM7StatusZephyr(),
         datamodels_emw.ModelM7Status(),
     ):
         renderer = RendererCPP(model=model)

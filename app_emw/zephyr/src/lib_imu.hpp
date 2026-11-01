@@ -1,5 +1,6 @@
 #pragma once
 
+#include "generated_m7_status_imu_struct.hpp"
 #include "lib_rpmsg.hpp"
 
 namespace imu {
@@ -11,5 +12,8 @@ extern rpmsg::Endpoint endpoint_imu;
 // and sends measurements forever. The IMU status is sent periodically over
 // 'status_endpoint'. Returns only if the sensor is not usable.
 void run(rpmsg::Endpoint &status_endpoint);
+
+// Snapshot of the live counters of 'run()'. May be called from any thread.
+ModelM7StatusIMU_t status();
 
 } // namespace imu

@@ -1,5 +1,8 @@
 #include "generated_git_version.hpp"
+// Keep this order: generated_m7_status_struct.hpp references the other structs.
 #include "generated_m7_status_channel_struct.hpp"
+#include "generated_m7_status_imu_struct.hpp"
+#include "generated_m7_status_zephyr_struct.hpp"
 #include "generated_m7_status_struct.hpp"
 #include "lib_imu.hpp"
 #include "lib_rpmsg.hpp"
@@ -62,6 +65,12 @@ void send_m7_status() {
         static_cast<int16_t>(commands::MSG_ID_M7_to_A53::STATUS);
     msg.header.msg_size = sizeof(msg);
     std::memcpy(msg.status.git_commit, GIT_VERSION, sizeof(GIT_VERSION));
+    msg.status.status_zephyr.mailbox_notify_err = transport.mailbox_notify_err();
+    msg.status.status_zephyr.mailbox_last_error_code =
+        transport.mailbox_last_error_code();
+    msg.status.status_zephyr.mailbox_notify_coalesced =
+        transport.mailbox_notify_coalesced();
+    msg.status.status_imu = imu::status();
     msg.status.channel_cmd = channel_status(endpoint_cmd);
     msg.status.channel_imu = channel_status(imu::endpoint_imu);
 

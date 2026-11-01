@@ -81,6 +81,9 @@ class Transport {
     int initialize();
     int attach(Endpoint &endpoint);
     [[noreturn]] void process_messages();
+    std::uint32_t mailbox_notify_err() const;
+    std::uint32_t mailbox_last_error_code() const;
+    std::uint32_t mailbox_notify_coalesced() const;
 
   private:
     int initialize_platform();
@@ -102,6 +105,10 @@ class Transport {
     struct rpmsg_device *rpmsg_device_{};
     void *resource_table_{};
     int initialization_result_{-EAGAIN};
+    // Atomic: the mailbox may be notified by several threads.
+    atomic_t mailbox_notify_err_{0};
+    atomic_t mailbox_last_error_code_{0}; // Absolute value of the error code.
+    atomic_t mailbox_notify_coalesced_{0};
 };
 
 } // namespace rpmsg

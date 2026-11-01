@@ -109,6 +109,18 @@ int Transport::attach(Endpoint &endpoint) {
     }
 }
 
+std::uint32_t Transport::mailbox_notify_err() const {
+    return static_cast<std::uint32_t>(atomic_get(&mailbox_notify_err_));
+}
+
+std::uint32_t Transport::mailbox_last_error_code() const {
+    return static_cast<std::uint32_t>(atomic_get(&mailbox_last_error_code_));
+}
+
+std::uint32_t Transport::mailbox_notify_coalesced() const {
+    return static_cast<std::uint32_t>(atomic_get(&mailbox_notify_coalesced_));
+}
+
 void Transport::ipm_callback(const struct device *, void *context,
                              std::uint32_t, volatile void *) {
     auto &transport = *static_cast<Transport *>(context);
@@ -121,8 +133,20 @@ int Transport::mailbox_notify(void *priv, std::uint32_t id) {
 
     LOG_DBG("Notify mailbox: vring=%" PRIu32 ", channel=%d", id,
             CONFIG_OPENAMP_RSC_TABLE_IPM_TX_ID);
-    return IPM_SEND(transport.ipm_, 0, CONFIG_OPENAMP_RSC_TABLE_IPM_TX_ID,
-                    &message, sizeof(message));
+    const int result =
+        IPM_SEND(transport.ipm_, 0, CONFIG_OPENAMP_RSC_TABLE_IPM_TX_ID,
+                 &message, sizeof(message));
+    if (result == -EBUSY) {
+        // Linux has not read the previous notification yet. Handling it will
+        // also pick up this message, so nothing is lost.
+        atomic_inc(&transport.mailbox_notify_coalesced_);
+    } else if (result != 0) {
+        // Counted here: rpmsg_send() does not report a failed notification.
+        atomic_inc(&transport.mailbox_notify_err_);
+        atomic_set(&transport.mailbox_last_error_code_,
+                   result < 0 ? -result : result);
+    }
+    return result;
 }
 
 void Transport::new_service_callback(struct rpmsg_device *, const char *name,

@@ -124,6 +124,14 @@ class HandlerCmdA53Console(HandlerCmdA53):
     @typing.override
     def handle_m7_status(self, m7_status: datamodels_emw.ModelM7Status) -> None:
         assert isinstance(m7_status, datamodels_emw.ModelM7Status)
+        print(
+            f"M7 status: git_commit={m7_status.git_commit}"
+            f" mailbox_notify_err={m7_status.status_zephyr.mailbox_notify_err}"
+            f" mailbox_last_error_code={m7_status.status_zephyr.mailbox_last_error_code}"
+            f" mailbox_notify_coalesced={m7_status.status_zephyr.mailbox_notify_coalesced}"
+            f" sample_fetch_err={m7_status.status_imu.sample_fetch_err}"
+            f" sample_gap_max_us={m7_status.status_imu.sample_gap_max_us}"
+        )
         for name, channel in (
             ("CMD", m7_status.channel_cmd),
             ("IMU", m7_status.channel_imu),
