@@ -1,4 +1,5 @@
-#include "generated_m7_status_channel.hpp"
+#include "generated_m7_status_channel_struct.hpp"
+#include "generated_m7_status_struct.hpp"
 #include "lib_imu.hpp"
 #include "lib_rpmsg.hpp"
 #include "messages.hpp"
@@ -16,14 +17,6 @@ LOG_MODULE_REGISTER(app_emw);
 namespace {
 
 constexpr int32_t M7_STATUS_INTERVAL_MS = 1000;
-
-// Sent 1:1 over RPMsg: the msg_header followed by the status of each channel.
-// This must match util_cmd_to_a53.py.
-typedef struct __attribute__((packed)) {
-    commands::msg_header header;
-    ModelM7StatusChannel_t channel_cmd;
-    ModelM7StatusChannel_t channel_imu;
-} msg_m7_status_t;
 
 K_SEM_DEFINE(cmd_ready, 0, 1);
 
@@ -55,19 +48,23 @@ ModelM7StatusChannel_t channel_status(const rpmsg::Endpoint &endpoint) {
 }
 
 void send_m7_status() {
-    msg_m7_status_t status = {};
-    status.header.msg_id =
+    // Sent 1:1 over RPMsg: the msg_header followed by the generated M7 status.
+    struct __attribute__((packed)) {
+        commands::msg_header header;
+        ModelM7Status_t status;
+    } msg = {};
+    msg.header.msg_id =
         static_cast<int16_t>(commands::MSG_ID_M7_to_A53::STATUS);
-    status.header.msg_size = sizeof(status);
-    status.channel_cmd = channel_status(endpoint_cmd);
-    status.channel_imu = channel_status(imu::endpoint_imu);
+    msg.header.msg_size = sizeof(msg);
+    msg.status.channel_cmd = channel_status(endpoint_cmd);
+    msg.status.channel_imu = channel_status(imu::endpoint_imu);
 
-    const int result = endpoint_cmd.send(&status, sizeof(status));
+    const int result = endpoint_cmd.send(&msg, sizeof(msg));
     if (result < 0) {
         LOG_WRN("Could not send M7 status: %d", result);
-    } else if (static_cast<std::size_t>(result) != sizeof(status)) {
+    } else if (static_cast<std::size_t>(result) != sizeof(msg)) {
         LOG_WRN("Incomplete M7 status: %d of %u bytes", result,
-                static_cast<unsigned int>(sizeof(status)));
+                static_cast<unsigned int>(sizeof(msg)));
     }
 }
 

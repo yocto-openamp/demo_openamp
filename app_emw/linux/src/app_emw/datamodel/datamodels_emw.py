@@ -1,3 +1,5 @@
+import typing
+
 import pydantic
 from experiment_datadefinitions.utils.util_pydantic import SchemaExtra
 
@@ -22,6 +24,11 @@ class ModelImuSHT40(pydantic.BaseModel):
 
 
 class ModelM7StatusChannel(pydantic.BaseModel):
+    cpp_filename: typing.ClassVar[str] = "m7_status_channel"
+    """
+    Used to name the generated files, e.g. generated_m7_status_channel_struct.hpp
+    """
+
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
     tx_ok: int = pydantic.Field(
@@ -65,6 +72,11 @@ class ModelM7StatusChannel(pydantic.BaseModel):
 
 
 class ModelM7Status(pydantic.BaseModel):
+    cpp_filename: typing.ClassVar[str] = "m7_status"
+    """
+    Used to name the generated files, e.g. generated_m7_status_struct.hpp
+    """
+
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
     channel_cmd: ModelM7StatusChannel = pydantic.Field(
@@ -76,6 +88,11 @@ class ModelM7Status(pydantic.BaseModel):
 
 
 class ModelImuStatus(pydantic.BaseModel):
+    cpp_filename: typing.ClassVar[str] = "imu_status"
+    """
+    Used to name the generated files, e.g. generated_imu_status_struct.hpp
+    """
+
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
     measurement_count: int = pydantic.Field(

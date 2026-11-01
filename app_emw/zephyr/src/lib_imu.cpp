@@ -1,6 +1,6 @@
 #include "lib_imu.hpp"
 
-#include "generated_imu_status.hpp"
+#include "generated_imu_status_struct.hpp"
 #include "messages.hpp"
 #include "messages_to_A53.hpp"
 #include "messages_to_M7.hpp"
