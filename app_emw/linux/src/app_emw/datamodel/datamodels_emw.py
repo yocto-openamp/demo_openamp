@@ -33,8 +33,6 @@ class ModelM7StatusChannel(pydantic.BaseModel):
 
     tx_ok: int = pydantic.Field(
         default=0,
-        ge=0,
-        le=2**32 - 1,
         json_schema_extra=SchemaExtra(
             unit="[1]",
             comment="Transmit ok count",
@@ -43,8 +41,6 @@ class ModelM7StatusChannel(pydantic.BaseModel):
 
     tx_err: int = pydantic.Field(
         default=0,
-        ge=0,
-        le=2**32 - 1,
         json_schema_extra=SchemaExtra(
             unit="[1]",
             comment="Transmit error count",
@@ -53,8 +49,6 @@ class ModelM7StatusChannel(pydantic.BaseModel):
 
     tx_last_err: int = pydantic.Field(
         default=0,
-        ge=0,
-        le=2**32 - 1,
         json_schema_extra=SchemaExtra(
             unit="[1]",
             comment="Last Transmit Error Code (absolute value)",
@@ -62,8 +56,6 @@ class ModelM7StatusChannel(pydantic.BaseModel):
     )
     rx_ok: int = pydantic.Field(
         default=0,
-        ge=0,
-        le=2**32 - 1,
         json_schema_extra=SchemaExtra(
             unit="[1]",
             comment="Receive ok count",
@@ -97,8 +89,6 @@ class ModelImuStatus(pydantic.BaseModel):
 
     measurement_count: int = pydantic.Field(
         default=0,
-        ge=0,
-        le=2**32 - 1,
         json_schema_extra=SchemaExtra(
             unit="[1]",
             comment="Count of measurements attempts",
@@ -106,8 +96,6 @@ class ModelImuStatus(pydantic.BaseModel):
     )
     measurement_count_error: int = pydantic.Field(
         default=0,
-        ge=0,
-        le=2**32 - 1,
         json_schema_extra=SchemaExtra(
             unit="[1]",
             comment="Count of failed measurements",
@@ -170,11 +158,12 @@ class ModelCommon(pydantic.BaseModel):
     )
 
     log_imu: int = pydantic.Field(
-        default=0,
+        default=1,
         ge=0,
         le=1,
         json_schema_extra=SchemaExtra(
             comment="0: off, 1: loggin",
+            format="%d",
         ).dict,
     )
 

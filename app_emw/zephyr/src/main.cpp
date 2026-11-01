@@ -111,9 +111,13 @@ int main(void) {
     k_thread_start(imu_thread);
     k_thread_start(m7_status_thread);
 
-    k_sleep(K_SECONDS(5));
-
-    LOG_INF("Done");
+    if (true) {
+        k_sleep(K_FOREVER);
+    } else {
+        k_sleep(K_SECONDS(5));
+    
+        LOG_INF("Done");
+    }
 
     return 0;
 }

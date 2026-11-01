@@ -45,8 +45,13 @@ class FiledumpImu:
         if message.topic != self._TOPIC:
             return
 
+        msg = (
+            f"IMU Logging to: {self.output_file}"
+            if message.topic_value
+            else "IMU Logging off!"
+        )
         logger.info(
-            f"{message.verb.name}({message.topic}, {message.topic_value}): Logging to: {self.output_file}"
+            f"{message.verb.name}({message.topic}, {message.topic_value}): {msg}"
         )
 
         if self.output_f is not None:
