@@ -20,37 +20,37 @@
             "jinja": true
         },
         {
-            "name": "web EMW app",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "app_emw.appweb.main_appweb_emw",
-            "args": [],
-            "env": {},
-            "jinja": true,
-            "justMyCode": false
-        },
-        {
-            "name": "EMW app",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "app_emw.app.main_app_emw",
-            "args": [],
-            "env": {},
-            "jinja": true,
-            "justMyCode": false
-        },
-        {
-            "name": "web EMW uvicorn",
+            "name": "mallow uvicorn",
             "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "args": [
-                "app_emw.appweb.main_appweb_emw:app",
+                "app_emw.appweb.main_appweb_mallow:app",
                 "--reload",
             ],
             "env": {},
             "jinja": true,
             "justMyCode": false
-        }
+        },
+        {
+            "name": "mallow",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "app_emw.appweb.main_appweb_mallow",
+            "args": [],
+            "env": {},
+            "jinja": true,
+            "justMyCode": false
+        },
+        {
+            "name": "nexus",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "app_emw.appweb.main_appweb_nexus",
+            "args": [],
+            "env": {},
+            "jinja": true,
+            "justMyCode": false
+        },
     ]
 }

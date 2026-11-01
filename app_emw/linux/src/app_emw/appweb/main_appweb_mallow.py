@@ -13,14 +13,11 @@ from experiment_datadefinitions.utils import (
     util_pydantic,
 )
 from experiment_datadefinitions.utils_observer.util_message import Message, MessageVerb
-from experiment_datadefinitions.utils_observer.util_observer import (
-    Observer,
-    Registration,
-)
-from experiment_datadefinitions.webui.widgets import simple_editors
+from experiment_datadefinitions.utils_observer.util_observer import Observer
 from fastapi import FastAPI
 from nicegui import ui
 
+from app_emw.appweb import util_webui
 from app_emw.datamodel import datamodels_emw
 from app_emw.lib import (
     util_app_emw,
@@ -28,6 +25,7 @@ from app_emw.lib import (
     util_constants,
     util_datasource_sht40,
     util_logging,
+    util_observer_push,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,44 +80,13 @@ class HandlerCmdA53(util_cmd_to_a53.HandlerCmdA53):
         )
 
 
-class WebUIState:
+class WebUIStateMallow(util_webui.WebUIState):
     def __init__(self) -> None:
-        self.observer = Observer()
-        self.model = datamodels_emw.ModelEMW()
+        super().__init__()
         self.handler_cmd_A53 = HandlerCmdA53(observer=self.observer)
 
-        self.hierarchy = util_pydantic.ModelHierarchy.factory(
-            model=self.model,
-            prefix="/",
-        )
-        for element in self.hierarchy.all_elements:
-            self.observer.send_message(
-                Message(
-                    topic=element.topic,
-                    verb=MessageVerb.REGISTER,
-                    topic_value=element.value,
-                ),
-            )
 
-        self.hierarchy_text = "...change a value and the hierarchy will appear here..."
-
-        def observer_callback(message: Message) -> None:
-            self.hierarchy_text = "\n".join(
-                [
-                    f"{f.topic} {repr(f.value)} ({message.verb.name})"
-                    for f in webui_state.hierarchy.all_elements
-                ]
-            )
-
-        self.observer.register_as_observer(
-            registration=Registration(
-                topic="/",
-                callback=observer_callback,
-            )
-        )
-
-
-webui_state = WebUIState()
+webui_state = WebUIStateMallow()
 
 
 def _log_task_result(task: asyncio.Task[None]) -> None:
@@ -148,6 +115,12 @@ async def lifespan(_app: FastAPI):
     )
     task_sht40.add_done_callback(_log_task_result)
 
+    task_observer_push = asyncio.create_task(
+        util_observer_push.observer_push_task(observer=webui_state.observer),
+        name="observer_push_task",
+    )
+    task_observer_push.add_done_callback(_log_task_result)
+
     try:
         yield
     finally:
@@ -157,45 +130,18 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-async def create_app() -> None:
-    """PID Controller Web UI"""
-
-    # with ui.column().classes("w-full max-w-2xl gap-0 p-4"):
-    def dump_elements(mh: util_pydantic.ModelHierarchy) -> None:
-        assert isinstance(mh, util_pydantic.ModelHierarchy)
-
-        for _hierarchy in mh.compounds.values():
-            with ui.expansion(_hierarchy.title, value=True).classes("w-full"):
-                dump_elements(mh=_hierarchy)
-
-        for topic, item in mh.elements.items():
-            # logger.debug(f"element:  {topic} - {item.value_type_name}")
-            try:
-                f_create_field = simple_editors.TYPE_MAP_NICE_GUI[item.value_type]
-            except KeyError:
-                ui.label(
-                    f"{item.field_name}: unsupported field type {item.value_type_name}"
-                )
-                continue
-
-            with ui.row().classes("w-full items-center gap-0 p-0 pl-4"):
-                f_create_field(observer=webui_state.observer, topic=topic, field=item)  # type: ignore[call-arg]
-
-    dump_elements(mh=webui_state.hierarchy)
-
-
 @ui.page("/")
 async def index() -> None:
-    await create_app()
+    await util_webui.create_app(webui_state=webui_state)
 
 
-ui.run_with(app, title="EMW Web UI")
+ui.run_with(app, title="mallow-observer")
 
 
 def main() -> None:
     """Start the WebUI application."""
 
-    uvicorn.run("app_emw.appweb.main_appweb_emw:app", reload=True)
+    uvicorn.run("app_emw.appweb.main_appweb_mallow:app", reload=True)
 
 
 if __name__ == "__main__":

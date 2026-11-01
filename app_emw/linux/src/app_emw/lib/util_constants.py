@@ -8,6 +8,8 @@ assert DIRECTORY_DATA.is_dir()
 PREFIX_M7 = "/m7"
 PREFIX_A53 = "/a53"
 
+NEXUS_PORT = 8001
+
 
 # These must match the endpoint names in main.cpp.
 CHANNEL_NAME_CMD: str = "rpmsg-emw-CMD"

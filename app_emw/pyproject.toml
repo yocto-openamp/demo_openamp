@@ -10,6 +10,7 @@ requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2.0",
     "nicegui>=2.0",
+    "websockets>=13.0",
     "demo_openamp",
     "experiment-datadefinitions",
 ]
