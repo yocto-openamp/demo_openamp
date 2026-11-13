@@ -16,15 +16,21 @@ async def sht40_task(observer: util_observer.Observer) -> None:
             await asyncio.sleep(3.0)
 
             for address_subtopic, address_i2c in (
-                ("sht40_intern", "/sys/bus/i2c/devices/3-0044/hwmon/hwmon5"),
-                ("sht40_extern", "/sys/bus/i2c/devices/3-0045/hwmon/hwmon4"),
+                ("sht40_intern", "/sys/bus/i2c/devices/3-0044/hwmon/"),
+                # The humidity sensor on Mallow Breakout Board v0.3 from 2026-11-10 was NOT populated
+                # ("sht40_extern", "/sys/bus/i2c/devices/3-0045/hwmon/hwmon4"),
             ):
                 for quantity_topic, quantity_path in (
-                    ("humidity", "/humidity1_input"),
-                    ("temperature", "/temp1_input"),
+                    ("humidity", "humidity1_input"),
+                    ("temperature", "temp1_input"),
                 ):
-                    path = "/".join([address_i2c, quantity_path])
-                    topic_value = int(pathlib.Path(path).read_text()) / 1000.0
+                    path_i2c = pathlib.Path(address_i2c)
+                    path_list_hwmon = list(path_i2c.glob("hwmon*"))
+                    if len(path_list_hwmon) != 1:
+                        logger.warning(f"Failed to resolve {path_i2c}/hwmon*!")
+                        continue
+                    path_final = path_list_hwmon[0] / quantity_path
+                    topic_value = int(path_final.read_text()) / 1000.0
 
                     topic = "/".join(
                         [util_constants.PREFIX_A53, address_subtopic, quantity_topic]
