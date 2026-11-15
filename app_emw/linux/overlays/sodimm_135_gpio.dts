@@ -1,0 +1,19 @@
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	fragment@0 {
+		target = <&gpio4>;
+		__overlay__ {
+			status = "okay";
+			sodimm_135 {
+				gpio-hog;
+				gpios = <23 GPIO_ACTIVE_HIGH>;
+				output-low;
+				line-name = "sodimm_135";
+			};
+		};
+	};
+};
