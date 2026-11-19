@@ -1,52 +1,42 @@
+# find_alt_mode.py
+
+Decodes i.MX8MP pinctrl groups from the running device tree (`/sys/firmware/devicetree/base/.../pinctrl@30330000`).
+Each `fsl,pins` entry is 6 cells: mux_reg, conf_reg, input_reg, mux_mode (ALT), input_val, pad_conf.
+This is what the DT *requests*; the kernel's applied state is in `/sys/kernel/debug/pinctrl/30330000.pinctrl/pinmux-pins` (root).
 
 ```bash
 app_emw/.venv/bin/python tools/scripts/find_alt_mode.py uart1grp
 
-uart1grp - Pin Configuration:
-  Pin #0: ALT4, Drive:4, Slew:2, Pull:100K_PD (0x000001a4)
-  Pin #1: ALT4, Drive:0, Slew:0, Pull:100K_PD (0x00000404)
-  Pin #2: ALT4, Drive:12, Slew:3, Pull:100K_PD (0x000005e4)
-  Pin #3: ALT4, Drive:0, Slew:0, Pull:100K_PD (0x00000004)
-  Pin #4: ALT2, Drive:0, Slew:0, Pull:100K_PD (0x00000002)
-  Pin #5: ALT4, Drive:8, Slew:3, Pull:100K_PD (0x000001c4)
-  Pin #6: ALT0, Drive:5, Slew:2, Pull:100K_PD (0x000001a8)
-  Pin #7: ALT0, Drive:1, Slew:0, Pull:100K_PD (0x00000408)
-  Pin #9: ALT4, Drive:0, Slew:0, Pull:100K_PD (0x00000004)
-  Pin #11: ALT4, Drive:8, Slew:3, Pull:100K_PD (0x000001c4)
-  Pin #12: ALT0, Drive:4, Slew:0, Pull:100K_PD (0x00000220)
-  Pin #13: ALT0, Drive:0, Slew:2, Pull:100K_PD (0x00000480)
-  Pin #14: ALT0, Drive:13, Slew:3, Pull:100K_PD (0x000005e8)
-  Pin #16: ALT4, Drive:0, Slew:0, Pull:100K_PD (0x00000004)
-  Pin #17: ALT4, Drive:8, Slew:3, Pull:100K_PD (0x000001c4)
-  Pin #18: ALT4, Drive:4, Slew:0, Pull:100K_PD (0x00000224)
-  Pin #19: ALT4, Drive:0, Slew:2, Pull:100K_PD (0x00000484)
-  Pin #23: ALT4, Drive:8, Slew:3, Pull:100K_PD (0x000001c4)
+uart1grp - 4 pin(s):
+  [ 0] MX8MP_IOMUXC_SAI2_RXD0__UART1_DCE_RTS        ALT4  mux:0x1a4 input:0x5e4=2  pad:0x000001c4 (DSE:X2 SLOW PULL-UP SCHMITT)
+  [ 1] MX8MP_IOMUXC_SAI2_TXFS__UART1_DCE_CTS        ALT4  mux:0x1a8  pad:0x000001c4 (DSE:X2 SLOW PULL-UP SCHMITT)
+  [ 2] MX8MP_IOMUXC_UART1_RXD__UART1_DCE_RX         ALT0  mux:0x220 input:0x5e8=4  pad:0x000001c4 (DSE:X2 SLOW PULL-UP SCHMITT)
+  [ 3] MX8MP_IOMUXC_UART1_TXD__UART1_DCE_TX         ALT0  mux:0x224  pad:0x000001c4 (DSE:X2 SLOW PULL-UP SCHMITT)
 ```
 
 ```bash
 app_emw/.venv/bin/python tools/scripts/find_alt_mode.py i2c2grp
 
-
-i2c2grp - Pin Configuration:
-  Pin #0: ALT0, Drive:1, Slew:0, Pull:100K_PD (0x00000208)
-  Pin #1: ALT0, Drive:13, Slew:1, Pull:100K_PD (0x00000468)
-  Pin #2: ALT4, Drive:5, Slew:2, Pull:100K_PD (0x000005ac)
-  Pin #4: ALT2, Drive:0, Slew:0, Pull:100K_PD (0x00000002)
-  Pin #5: ALT6, Drive:8, Slew:3, Pull:100K_PD (0x400001c6)
-  Pin #6: ALT4, Drive:1, Slew:0, Pull:100K_PD (0x0000020c)
-  Pin #7: ALT4, Drive:13, Slew:1, Pull:100K_PD (0x0000046c)
-  Pin #8: ALT0, Drive:6, Slew:2, Pull:100K_PD (0x000005b0)
-  Pin #10: ALT2, Drive:0, Slew:0, Pull:100K_PD (0x00000002)
-  Pin #11: ALT6, Drive:8, Slew:3, Pull:100K_PD (0x400001c6)
+i2c2grp - 2 pin(s):
+  [ 0] MX8MP_IOMUXC_I2C2_SCL__I2C2_SCL              ALT0  mux:0x208 input:0x5ac=2  pad:0x400001c6 (DSE:X6 SLOW PULL-UP SCHMITT SION)
+  [ 1] MX8MP_IOMUXC_I2C2_SDA__I2C2_SDA              ALT0  mux:0x20c input:0x5b0=2  pad:0x400001c6 (DSE:X6 SLOW PULL-UP SCHMITT SION)
 ```
 
 ```bash
 app_emw/.venv/bin/python tools/scripts/find_alt_mode.py gpio3grp
 
-gpio3grp - Pin Configuration:
-  Pin #0: ALT0, Drive:5, Slew:0, Pull:100K_PD (0x00000028)
-  Pin #1: ALT0, Drive:1, Slew:2, Pull:100K_PD (0x00000288)
-  Pin #5: ALT4, Drive:0, Slew:2, Pull:100K_PD (0x00000184)
+gpio3grp - 1 pin(s):
+  [ 0] MX8MP_IOMUXC_GPIO1_IO05__GPIO1_IO05          ALT0  mux:0x028  pad:0x00000184 (DSE:X2 SLOW PULL-DOWN SCHMITT)
+```
+
+```bash
+app_emw/.venv/bin/python tools/scripts/find_alt_mode.py --pad SD1_DATA4
+Groups using pad SD1_DATA4 (mux:0x0a4):
+
+sodimm_143_gpio_pins: MALFORMED - 5 cells, not a multiple of 6 (missing pad config?): 0xa4 0x304 0x0 0x5 0x0
+
+uart2ctsgrp - 1 pin(s):
+  [ 0] MX8MP_IOMUXC_SD1_DATA4__UART2_DCE_RTS        ALT4  mux:0x0a4 input:0x5ec=0  pad:0x000001c4 (DSE:X2 SLOW PULL-UP SCHMITT)
 ```
 
 Example:
