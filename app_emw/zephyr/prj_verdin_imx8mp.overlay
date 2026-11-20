@@ -60,10 +60,11 @@ hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_
         spi-max-frequency = <1000000>;
         accel-pwr-mode = <ICM45686_DT_ACCEL_LN>;
         accel-fs = <ICM45686_DT_ACCEL_FS_4>;
-        accel-odr = <ICM45686_DT_ACCEL_ODR_100>;
+        /* 12.5 Hz is the slowest ODR supported in low-noise (LN) mode. */
+        accel-odr = <ICM45686_DT_ACCEL_ODR_12_5>;
         gyro-pwr-mode = <ICM45686_DT_GYRO_LN>;
         gyro-fs = <ICM45686_DT_GYRO_FS_2000>;
-        gyro-odr = <ICM45686_DT_GYRO_ODR_100>;
+        gyro-odr = <ICM45686_DT_GYRO_ODR_12_5>;
         status = "okay";
     };
 

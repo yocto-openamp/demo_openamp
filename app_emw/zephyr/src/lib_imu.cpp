@@ -24,37 +24,88 @@ namespace {
 
 constexpr uint8_t ICM45686_WHO_AM_I = 0x72;
 constexpr uint8_t ICM45686_DEVICE_ID = 0xe9;
+constexpr uint8_t ICM45686_INT1_CONFIG0 = 0x16;
+constexpr uint8_t ICM45686_INT1_CONFIG2 = 0x18;
+// INT1_CONFIG0: route the UI Data Ready interrupt to INT1.
+constexpr uint8_t ICM45686_INT1_EN_DRDY = 1u << 2;
+// INT1_CONFIG2: active high, pulse mode, push-pull (as the Zephyr driver
+// configures it in trigger mode).
+constexpr uint8_t ICM45686_INT1_ACTIVE_HIGH = 1u << 0;
 constexpr uint32_t ACCEL_MEASUREMENTS_PER_GYRO = 10;
 constexpr int64_t IMU_STATUS_INTERVAL_MS = 1000;
-// Matches accel-odr and gyro-odr of 100 Hz in prj_verdin_imx8mp.overlay.
-constexpr int32_t IMU_SAMPLE_INTERVAL_MS = 10;
+// Matches accel-odr and gyro-odr of 12.5 Hz in prj_verdin_imx8mp.overlay.
+constexpr int32_t IMU_SAMPLE_INTERVAL_MS = 80;
 
-bool verify_sensor_id() {
-    const spi_dt_spec spi = SPI_DT_SPEC_GET(
-        DT_NODELABEL(icm45686), SPI_OP_MODE_CONTROLLER | SPI_WORD_SET(8));
-    if (!spi_is_ready_dt(&spi)) {
-        LOG_ERR("ICM-45686 SPI bus or chip select is not ready");
-        return false;
-    }
+const spi_dt_spec imu_spi = SPI_DT_SPEC_GET(
+    DT_NODELABEL(icm45686), SPI_OP_MODE_CONTROLLER | SPI_WORD_SET(8));
 
-    uint8_t tx[] = {static_cast<uint8_t>(ICM45686_WHO_AM_I | 0x80), 0};
+int read_register(uint8_t address, uint8_t &value) {
+    uint8_t tx[] = {static_cast<uint8_t>(address | 0x80), 0};
     uint8_t rx[sizeof(tx)] = {};
     spi_buf tx_buffer = {tx, sizeof(tx)};
     spi_buf rx_buffer = {rx, sizeof(rx)};
     const spi_buf_set tx_buffers = {&tx_buffer, 1};
     const spi_buf_set rx_buffers = {&rx_buffer, 1};
-    const int result = spi_transceive_dt(&spi, &tx_buffers, &rx_buffers);
+    const int result = spi_transceive_dt(&imu_spi, &tx_buffers, &rx_buffers);
+    value = rx[1];
+    return result;
+}
+
+int write_register(uint8_t address, uint8_t value) {
+    uint8_t tx[] = {address, value};
+    spi_buf tx_buffer = {tx, sizeof(tx)};
+    const spi_buf_set tx_buffers = {&tx_buffer, 1};
+    return spi_write_dt(&imu_spi, &tx_buffers);
+}
+
+bool verify_sensor_id() {
+    if (!spi_is_ready_dt(&imu_spi)) {
+        LOG_ERR("ICM-45686 SPI bus or chip select is not ready");
+        return false;
+    }
+
+    uint8_t device_id = 0;
+    const int result = read_register(ICM45686_WHO_AM_I, device_id);
     if (result != 0) {
         LOG_ERR("ICM-45686 WHO_AM_I transfer failed: %d", result);
         return false;
     }
-    if (rx[1] != ICM45686_DEVICE_ID) {
+    if (device_id != ICM45686_DEVICE_ID) {
         LOG_ERR("ICM-45686 WHO_AM_I=0x%02x, expected 0x%02x",
-                rx[1], ICM45686_DEVICE_ID);
+                device_id, ICM45686_DEVICE_ID);
         return false;
     }
 
-    LOG_INF("ICM-45686 WHO_AM_I=0x%02x", rx[1]);
+    LOG_INF("ICM-45686 WHO_AM_I=0x%02x", device_id);
+    return true;
+}
+
+bool enable_drdy_interrupt_on_int1() {
+    // INT1 pin behavior: active high, pulse mode, push-pull.
+    int result = write_register(ICM45686_INT1_CONFIG2,
+                                ICM45686_INT1_ACTIVE_HIGH);
+    if (result != 0) {
+        LOG_ERR("ICM-45686 INT1_CONFIG2 write failed: %d", result);
+        return false;
+    }
+
+    // Enable the UI Data Ready interrupt on INT1.
+    result = write_register(ICM45686_INT1_CONFIG0, ICM45686_INT1_EN_DRDY);
+    if (result != 0) {
+        LOG_ERR("ICM-45686 INT1_CONFIG0 write failed: %d", result);
+        return false;
+    }
+
+    uint8_t readback = 0;
+    result = read_register(ICM45686_INT1_CONFIG0, readback);
+    if (result != 0 || readback != ICM45686_INT1_EN_DRDY) {
+        LOG_ERR("ICM-45686 INT1_CONFIG0 readback=0x%02x (result %d), "
+                "expected 0x%02x",
+                readback, result, ICM45686_INT1_EN_DRDY);
+        return false;
+    }
+
+    LOG_INF("ICM-45686 UI Data Ready interrupt enabled on INT1");
     return true;
 }
 
@@ -178,16 +229,21 @@ void run(rpmsg::Endpoint &status_endpoint) {
         return;
     }
 
+    if (!enable_drdy_interrupt_on_int1()) {
+        return;
+    }
+
     LOG_INF("Waiting for Linux to start IMU streaming");
     k_sem_take(&imu_ready, K_FOREVER);
 
     // NOTE: This timer is not synchronized with the sensor: A sample may
     // occasionally be read twice or missed, and timestamps are the read time.
-    // The proper fix is the data-ready interrupt: Add int-gpios to the overlay,
-    // enable a trigger mode such as CONFIG_ICM45686_TRIGGER_GLOBAL_THREAD and
-    // read in the trigger handler. This gives exactly one read per new sample
-    // and accurate timestamps, but requires the INT pin of the sensor to be
-    // wired to a GPIO.
+    // The UI Data Ready interrupt is already output on INT1 (see
+    // enable_drdy_interrupt_on_int1). The proper fix is to use it: Add
+    // int-gpios to the overlay, enable a trigger mode such as
+    // CONFIG_ICM45686_TRIGGER_GLOBAL_THREAD and read in the trigger handler.
+    // This gives exactly one read per new sample and accurate timestamps, but
+    // requires the INT1 pin of the sensor to be wired to a GPIO.
     k_timer sample_timer;
     k_timer_init(&sample_timer, nullptr, nullptr);
     k_timer_start(&sample_timer, K_MSEC(IMU_SAMPLE_INTERVAL_MS),
