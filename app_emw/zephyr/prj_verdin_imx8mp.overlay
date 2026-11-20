@@ -51,20 +51,22 @@ hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_
     status = "okay";
     pinctrl-0 = <&ecspi1_default>;
     pinctrl-names = "default";
-    /* Hold CS across the driver's separate address/data bursts. */
+    /* ECSPI hardware CS frames each <=32-bit burst; GPIO CS lets the SPI
+     * core hold CS across the whole transfer (spi-hold-cs would not help:
+     * it only keeps a GPIO CS asserted *between* transactions). */
     cs-gpios = <&gpio5 9 GPIO_ACTIVE_LOW>;
 
     icm45686: icm45686@0 {
         compatible = "invensense,icm45686";
         reg = <0>;
-        spi-max-frequency = <1000000>;
+        spi-max-frequency = <8000000>;
         accel-pwr-mode = <ICM45686_DT_ACCEL_LN>;
         accel-fs = <ICM45686_DT_ACCEL_FS_4>;
         /* 12.5 Hz is the slowest ODR supported in low-noise (LN) mode. */
-        accel-odr = <ICM45686_DT_ACCEL_ODR_12_5>;
+        accel-odr = <ICM45686_DT_ACCEL_ODR_6400>;
         gyro-pwr-mode = <ICM45686_DT_GYRO_LN>;
         gyro-fs = <ICM45686_DT_GYRO_FS_2000>;
-        gyro-odr = <ICM45686_DT_GYRO_ODR_12_5>;
+        gyro-odr = <ICM45686_DT_GYRO_ODR_6400>;
         status = "okay";
     };
 

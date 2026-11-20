@@ -19,12 +19,8 @@ This pins are not connected:
 
 ## Requirements
 
-* Development:
-  * ICM45686_DT_ACCEL_ODR_12_5: 12.5Hz
-  * SPI at 100kHz.
-* Production:
-  * ICM45686_DT_ACCEL_ODR_6400: 6.4kHz
-  * SPI at 1MHz.
+* ICM45686_DT_ACCEL_ODR_6400: 6.4kHz
+* SPI at 8MHz.
 * The IMU should be clocked from the oscillator.
 
 * Once the IMU has been initiated, it should continue continuously sample.
@@ -34,8 +30,13 @@ This pins are not connected:
 
 ## spi-hold-cs
 
-Connected links:
+Links
+
 * app_emw/zephyr/prj_verdin_imx8mp.overlay
   Hold CS across the driver's separate address/data bursts.
 * https://docs.zephyrproject.org/latest/build/dts/api/bindings/sensor/invensense%2Cicm45686-spi.html
   spi-hold-cs: In some cases, it is necessary for the controller to manage SPI chip select under software control.
+
+Prompt: May we change the setting of 'spi-hold-cs' so that "Hold CS across the driver's separate address/data bursts." is not required anymore.
+
+Claude: Short answer: No — spi-hold-cs can't replace the GPIO CS here, and it would actually make things worse.
