@@ -21,6 +21,7 @@ IrqThrottler::IrqThrottler(rpmsg::Endpoint &endpoint, const Config &config)
       livesign_min_delay_us_(config.livesign_min_delay_us),
       message_id_(config.message_id) {
     k_work_init(&work_, work_handler);
+    k_mutex_init(&send_mutex_);
 }
 
 void IrqThrottler::irq() {
@@ -45,10 +46,10 @@ void IrqThrottler::irq() {
 }
 
 void IrqThrottler::poll() {
-    const uint64_t now_us = timestamp_us();
-
+    k_mutex_lock(&send_mutex_, K_FOREVER);
     k_spinlock_key_t key = k_spin_lock(&lock_);
-    const bool send = (now_us - irq_timestamp_us_) >= livesign_min_delay_us_;
+    const uint64_t now_us = timestamp_us();
+    const bool send = (now_us - signal_timestamp_us_) >= livesign_min_delay_us_;
     const IrqX19_7_t livesign = {
         irq_timestamp_us_, irq_counter_, irq_dropped_counter_, false};
     k_spin_unlock(&lock_, key);
@@ -56,6 +57,7 @@ void IrqThrottler::poll() {
     if (send) {
         send_signal(livesign);
     }
+    k_mutex_unlock(&send_mutex_);
 }
 
 void IrqThrottler::work_handler(struct k_work *work) {
@@ -65,7 +67,9 @@ void IrqThrottler::work_handler(struct k_work *work) {
     const IrqX19_7_t signal = self.pending_;
     k_spin_unlock(&self.lock_, key);
 
+    k_mutex_lock(&self.send_mutex_, K_FOREVER);
     self.send_signal(signal);
+    k_mutex_unlock(&self.send_mutex_);
 }
 
 void IrqThrottler::send_signal(const IrqX19_7_t &signal) {
@@ -84,5 +88,9 @@ void IrqThrottler::send_signal(const IrqX19_7_t &signal) {
     } else if (static_cast<std::size_t>(result) != sizeof(msg)) {
         LOG_WRN("Incomplete irq signal: %d of %u bytes", result,
                 static_cast<unsigned int>(sizeof(msg)));
+    } else {
+        k_spinlock_key_t key = k_spin_lock(&lock_);
+        signal_timestamp_us_ = timestamp_us();
+        k_spin_unlock(&lock_, key);
     }
 }

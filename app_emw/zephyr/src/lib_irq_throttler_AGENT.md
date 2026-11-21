@@ -9,9 +9,9 @@ Interrupts should be handled and **forwarded with minimal delay**.
 However, a rapid sequence of interrupts may overload the system. The IRQ Throttler
 therefore **limits the rate** at which interrupt signals are sent.
 
-When interrupts are absent for a longer time
-the class will send **periodic livesign** signals to indicate that it remains
-active.
+When no signal has been sent for a longer time, the class will send
+**periodic livesign** signals to indicate that it remains active. This also
+reports the counters during a continuous sequence of dropped interrupts.
 
 
 ## Configuration
@@ -25,8 +25,8 @@ active.
 * `irq_min_interval_us` [us]: The minimum interval between consecutive interrupts
   for an interrupt signal to be forwarded. The previous interrupt counts even
   if its signal was dropped.
-* `livesign_min_delay_us` [us]: The minimum time since the last interrupt before
-  a livesign is sent.
+* `livesign_min_delay_us` [us]: The minimum time since the last signal was sent
+  before a livesign is sent.
 * `message_id`: See `messages_to_A53.hpp`
 
 ## Signal format
@@ -61,15 +61,20 @@ interrupt follows a sufficiently long gap.
 ### Livesign signals
 
 The main loop calls `poll()` at the `poll_rate_s` interval. A livesign is sent
-if at least `livesign_min_delay_us` has elapsed since the last interrupt, as
-recorded in `irq_timestamp_us`, including an interrupt whose signal was
-dropped. Livesign signals have `is_interrupt=false`.
+if at least `livesign_min_delay_us` has elapsed since the last signal was sent,
+as recorded in `signal_timestamp_us`. Livesign signals have
+`is_interrupt=false`.
+
+`signal_timestamp_us` is internal state initialized to 0 and is updated to the
+current timestamp whenever an interrupt signal or livesign is successfully
+sent. A dropped interrupt or failed send does not update it. Before the first
+signal is sent, the same delay check uses the initial value of 0.
 
 A livesign contains the `irq_timestamp_us` of the most recent interrupt and
 the current `irq_counter` and `irq_dropped_counter`, including interrupts
-whose signals were dropped. Before the first interrupt, the same delay check
-uses the initial `irq_timestamp_us` value of 0; any livesign sent then
-contains that value.
+whose signals were dropped. Before the first interrupt, the livesign contains
+the initial `irq_timestamp_us` value of 0. Dropped interrupts do not postpone
+livesigns.
 
 ## Implementation
 
@@ -87,7 +92,7 @@ memory from the heap using `malloc`.
 ### Interface
 
 * `poll()`: Called from `main()` at the configured `poll_rate_s` interval.
-  It checks whether a livesign should be sent.
+  It checks the time since the last signal and sends a livesign when due.
 * `irq()`: Called by the interrupt service routine. It checks the interval
   since the previous interrupt, updates `irq_counter`,
   `irq_dropped_counter`, and `irq_timestamp_us`, and sends a signal if the
@@ -97,9 +102,10 @@ memory from the heap using `malloc`.
 
 `poll()` can be interrupted by `irq()`. The implementation must protect shared
 state using Zephyr primitives that are safe in both contexts. In particular,
-`poll()` must read a consistent snapshot of `irq_timestamp_us`,
-`irq_counter`, and `irq_dropped_counter`, including when the timestamp cannot
-be read atomically on its own.
+`poll()` must read a consistent snapshot of `signal_timestamp_us`,
+`irq_timestamp_us`, `irq_counter`, and `irq_dropped_counter`, including when
+timestamps cannot be read atomically on their own. Updates to
+`signal_timestamp_us` must also be protected against concurrent access.
 
 Signal delivery from `irq()` must use an ISR-safe, non-blocking mechanism. If
 the delivery mechanism is not ISR-safe, delivery must be deferred to a thread.
