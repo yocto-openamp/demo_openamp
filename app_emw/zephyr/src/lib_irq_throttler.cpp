@@ -81,7 +81,7 @@ void IrqThrottler::send_signal(const bool is_interrupt,
     // Sent 1:1 over RPMsg: the msg_header followed by the irq_signal.
     struct __attribute__((packed)) {
         commands::msg_header header;
-        IrqX19_7_t signal;
+        ModelIrqX19_7_t signal;
     } msg = {};
     msg.header.msg_id = static_cast<int16_t>(message_id_);
     msg.header.msg_size = sizeof(msg);

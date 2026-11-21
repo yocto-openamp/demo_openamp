@@ -153,7 +153,7 @@ Use X19-6(SODIMM_20) to test the new class!
 
 ### Signal data model
 
-* Add a `IrqX19_7` class with members corresponding to `irq_signal` in
+* Add a `ModelIrqX19_7` class with members corresponding to `irq_signal` in
   `app_emw/linux/src/app_emw/datamodel/datamodels_emw.py`. The generated C++
   field types are:
   * `irq_timestamp_us`: `uint64_t`
@@ -164,7 +164,7 @@ Use X19-6(SODIMM_20) to test the new class!
   `app_emw/linux/src/app_emw/app/main_codegeneration.py`.
 * Generate the `irq_signal` data structure by running
   `app_emw/run_0_codegeneration.sh`.
-* Add handling for `IrqX19_7` to the Linux message handler in
+* Add handling for `ModelIrqX19_7` to the Linux message handler in
   `app_emw/linux/src/app_emw/lib/util_cmd_to_a53.py`, including deserialization
   of the signal.
 

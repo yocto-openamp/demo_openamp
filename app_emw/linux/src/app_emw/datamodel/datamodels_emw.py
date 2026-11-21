@@ -138,7 +138,7 @@ class ModelM7Status(pydantic.BaseModel):
     )
 
 
-class IrqX19_7(pydantic.BaseModel):
+class ModelIrqX19_7(pydantic.BaseModel):
     """
     The 'irq_signal' sent by the IRQ Throttler on the M7.
     See lib_irq_throttler_AGENT.md.
@@ -293,11 +293,11 @@ class ModelCommon(pydantic.BaseModel):
 class ModelM7(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
-    irk_X19_7: IrqX19_7 = pydantic.Field(
-        default_factory=lambda: IrqX19_7(),
-    )
     status: ModelM7Status = pydantic.Field(
         default_factory=lambda: ModelM7Status(),
+    )
+    irk_X19_7: ModelIrqX19_7 = pydantic.Field(
+        default_factory=lambda: ModelIrqX19_7(),
     )
     imu_status: ModelImuStatus = pydantic.Field(
         default_factory=lambda: ModelImuStatus(),

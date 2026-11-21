@@ -80,8 +80,8 @@ class HandlerCmdA53(util_cmd_to_a53.HandlerCmdA53):
         )
 
     @typing.override
-    def handle_irq_x19_7(self, irq_signal: datamodels_emw.IrqX19_7) -> None:
-        assert isinstance(irq_signal, datamodels_emw.IrqX19_7)
+    def handle_irq_x19_7(self, irq_signal: datamodels_emw.ModelIrqX19_7) -> None:
+        assert isinstance(irq_signal, datamodels_emw.ModelIrqX19_7)
 
         # util_cmd_to_a53.HandlerCmdA53Console.print_irq(irq_signal=irq_signal)
         self._notify(

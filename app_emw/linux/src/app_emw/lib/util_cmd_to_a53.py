@@ -107,7 +107,7 @@ class HandlerCmdA53(abc.ABC):
                 self.handle_m7_status(m7_status=m7_status)
 
             case MSG_ID_M7_to_A53.IRQ_X19_7:
-                renderer = RendererCPP(model=datamodels_emw.IrqX19_7())
+                renderer = RendererCPP(model=datamodels_emw.ModelIrqX19_7())
                 signal_size = ctypes.sizeof(renderer.ctypes_model)
                 if len(payload_cmd) != signal_size:
                     raise RuntimeError(
@@ -115,7 +115,7 @@ class HandlerCmdA53(abc.ABC):
                     )
 
                 irq_signal = renderer.deserialize_from_cpp(payload_cmd)
-                assert isinstance(irq_signal, datamodels_emw.IrqX19_7)
+                assert isinstance(irq_signal, datamodels_emw.ModelIrqX19_7)
 
                 self.handle_irq_x19_7(irq_signal=irq_signal)
 
@@ -129,7 +129,7 @@ class HandlerCmdA53(abc.ABC):
     def handle_m7_status(self, m7_status: datamodels_emw.ModelM7Status) -> None: ...
 
     @abc.abstractmethod
-    def handle_irq_x19_7(self, irq_signal: datamodels_emw.IrqX19_7) -> None: ...
+    def handle_irq_x19_7(self, irq_signal: datamodels_emw.ModelIrqX19_7) -> None: ...
 
 
 class HandlerCmdA53Console(HandlerCmdA53):
@@ -160,12 +160,12 @@ class HandlerCmdA53Console(HandlerCmdA53):
             )
 
     @typing.override
-    def handle_irq_x19_7(self, irq_signal: datamodels_emw.IrqX19_7) -> None:
+    def handle_irq_x19_7(self, irq_signal: datamodels_emw.ModelIrqX19_7) -> None:
         self.print_irq(irq_signal=irq_signal)
 
     @staticmethod
-    def print_irq(irq_signal: datamodels_emw.IrqX19_7) -> None:
-        assert isinstance(irq_signal, datamodels_emw.IrqX19_7)
+    def print_irq(irq_signal: datamodels_emw.ModelIrqX19_7) -> None:
+        assert isinstance(irq_signal, datamodels_emw.ModelIrqX19_7)
         signal_type = "interrupt" if irq_signal.is_interrupt else "livesign"
         print(
             f"IrqX19_7 {signal_type}:"

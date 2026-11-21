@@ -47,7 +47,7 @@ def main() -> int:
     # Nested models are only referenced: Include the headers of ModelM7StatusChannel,
     # ModelM7StatusIMU and ModelM7StatusZephyr before the headers of ModelM7Status!
     for model in (
-        datamodels_emw.IrqX19_7(),
+        datamodels_emw.ModelIrqX19_7(),
         datamodels_emw.ModelImuStatus(),
         datamodels_emw.ModelM7StatusChannel(),
         datamodels_emw.ModelM7StatusIMU(),
