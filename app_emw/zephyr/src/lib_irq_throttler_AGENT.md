@@ -36,6 +36,8 @@ The `irq_signal` message contains the following fields:
 * `irq_timestamp_us`: The timestamp at which the interrupt occurred.
 * `irq_counter`: A counter incremented for each interrupt. It may wrap on
   overflow.
+* `irq_dropped_counter`: A counter incremented for each interrupt whose signal
+  is dropped by the rate limit. It may wrap on overflow.
 * `is_interrupt`: `true` for an interrupt signal and `false` for a livesign.
 
 ## Signal generation
@@ -45,8 +47,9 @@ The `irq_signal` message contains the following fields:
 When an interrupt occurs, `irq()` compares the current time with the previous
 `irq_timestamp_us` before updating it. It increments `irq_counter` and updates
 `irq_timestamp_us` for every interrupt, including those whose signals are
-dropped. The interrupt signal is sent only when at least
-`irq_min_interval_s` has elapsed since the previous interrupt.
+dropped. If less than `irq_min_interval_s` has elapsed since the previous
+interrupt, it increments `irq_dropped_counter` and does not send an interrupt
+signal. Otherwise, it sends the interrupt signal.
 
 `irq_timestamp_us` is initialized to 0. The same interval check applies to
 the first interrupt, using 0 as the previous timestamp.
@@ -63,9 +66,10 @@ recorded in `irq_timestamp_us`, including an interrupt whose signal was
 dropped. Livesign signals have `is_interrupt=false`.
 
 A livesign contains the `irq_timestamp_us` of the most recent interrupt and
-the current `irq_counter`, including interrupts whose signals were dropped.
-Before the first interrupt, the same delay check uses the initial
-`irq_timestamp_us` value of 0; any livesign sent then contains that value.
+the current `irq_counter` and `irq_dropped_counter`, including interrupts
+whose signals were dropped. Before the first interrupt, the same delay check
+uses the initial `irq_timestamp_us` value of 0; any livesign sent then
+contains that value.
 
 ## Implementation
 
@@ -85,16 +89,17 @@ memory from the heap using `malloc`.
 * `poll()`: Called from `main()` at the configured `poll_rate_s` interval.
   It checks whether a livesign should be sent.
 * `irq()`: Called by the interrupt service routine. It checks the interval
-  since the previous interrupt, updates `irq_counter` and `irq_timestamp_us`,
-  and sends a signal if the interval meets the rate limit.
+  since the previous interrupt, updates `irq_counter`,
+  `irq_dropped_counter`, and `irq_timestamp_us`, and sends a signal if the
+  interval meets the rate limit.
 
 ### Interrupt and main-loop concurrency
 
 `poll()` can be interrupted by `irq()`. The implementation must protect shared
 state using Zephyr primitives that are safe in both contexts. In particular,
-`poll()` must read a consistent snapshot of `irq_timestamp_us` and
-`irq_counter`, including when the timestamp cannot be read atomically on its
-own.
+`poll()` must read a consistent snapshot of `irq_timestamp_us`,
+`irq_counter`, and `irq_dropped_counter`, including when the timestamp cannot
+be read atomically on its own.
 
 Signal delivery from `irq()` must use an ISR-safe, non-blocking mechanism. If
 the delivery mechanism is not ISR-safe, delivery must be deferred to a thread.
@@ -144,6 +149,7 @@ The current `poll_rate_s` is based on the existing
   field types are:
   * `irq_timestamp_us`: `uint64_t`
   * `irq_counter`: `uint16_t`
+  * `irq_dropped_counter`: `uint16_t`
   * `is_interrupt`: `bool`
 * Add the model to the code generator in
   `app_emw/linux/src/app_emw/app/main_codegeneration.py`.

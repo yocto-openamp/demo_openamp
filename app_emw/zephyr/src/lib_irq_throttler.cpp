@@ -37,7 +37,9 @@ void IrqThrottler::irq() {
     irq_counter_++;
     irq_timestamp_us_ = now_us;
     if (forward) {
-        pending_ = {now_us, irq_counter_, true};
+        pending_ = {now_us, irq_counter_, irq_dropped_counter_, true};
+    } else {
+        irq_dropped_counter_++;
     }
     k_spin_unlock(&lock_, key);
 
@@ -51,7 +53,8 @@ void IrqThrottler::poll() {
 
     k_spinlock_key_t key = k_spin_lock(&lock_);
     const bool send = (now_us - irq_timestamp_us_) >= livesign_min_delay_us_;
-    const IrqX19_7_t livesign = {irq_timestamp_us_, irq_counter_, false};
+    const IrqX19_7_t livesign = {
+        irq_timestamp_us_, irq_counter_, irq_dropped_counter_, false};
     k_spin_unlock(&lock_, key);
 
     if (send) {

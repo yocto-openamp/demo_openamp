@@ -31,10 +31,10 @@ class IrqThrottler {
     IrqThrottler(const IrqThrottler &) = delete;
     IrqThrottler &operator=(const IrqThrottler &) = delete;
 
-    // Called by the interrupt service routine: Updates 'irq_counter' and
-    // 'irq_timestamp_us' and, if the rate limit is met, defers the interrupt
-    // signal to the system workqueue ('rpmsg_send' may block and is not
-    // ISR-safe).
+    // Called by the interrupt service routine: Updates the interrupt counters
+    // and 'irq_timestamp_us' and, if the rate limit is met, defers the
+    // interrupt signal to the system workqueue ('rpmsg_send' may block and is
+    // not ISR-safe).
     void irq();
 
     // Called from main() at the 'poll_rate_s' interval: Sends a livesign if
@@ -56,6 +56,7 @@ class IrqThrottler {
     struct k_spinlock lock_{};
     uint64_t irq_timestamp_us_{0};
     uint16_t irq_counter_{0};
+    uint16_t irq_dropped_counter_{0};
     // The interrupt signal pending in the system workqueue.
     IrqX19_7_t pending_{};
 };

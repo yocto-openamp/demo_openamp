@@ -167,6 +167,17 @@ class IrqX19_7(pydantic.BaseModel):
             cpp_type="uint16_t",
         ).dict,
     )
+    irq_dropped_counter: int = pydantic.Field(
+        default=0,
+        json_schema_extra=SchemaExtra(
+            unit="[1]",
+            comment=(
+                "A counter incremented for each interrupt whose signal is dropped "
+                "by the rate limit. It may wrap on overflow"
+            ),
+            cpp_type="uint16_t",
+        ).dict,
+    )
     is_interrupt: bool = pydantic.Field(
         default=False,
         json_schema_extra=SchemaExtra(

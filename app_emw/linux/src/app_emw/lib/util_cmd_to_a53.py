@@ -171,6 +171,7 @@ class HandlerCmdA53Console(HandlerCmdA53):
             f"IrqX19_7 {signal_type}:"
             f" irq_timestamp_us={irq_signal.irq_timestamp_us}"
             f" irq_counter={irq_signal.irq_counter}"
+            f" irq_dropped_counter={irq_signal.irq_dropped_counter}"
         )
 
     @staticmethod

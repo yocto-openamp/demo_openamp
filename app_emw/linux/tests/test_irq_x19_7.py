@@ -8,15 +8,14 @@ from experiment_datadefinitions.renderer.renderer_cpp import RendererCPP
 
 
 def test_irq_x19_7_cpp_layout() -> None:
-    """The packed layout must match IrqX19_7_t: uint64_t + uint16_t + bool."""
+    """The packed layout must match the generated fixed-width signal fields."""
     renderer = RendererCPP(model=datamodels_emw.IrqX19_7())
-    assert ctypes.sizeof(renderer.ctypes_model) == 8 + 2 + 1
+    assert ctypes.sizeof(renderer.ctypes_model) == 8 + 2 + 2 + 2
 
 
-def test_irq_x19_7_struct_uses_bool() -> None:
+def test_irq_x19_7_struct_contains_dropped_counter() -> None:
     renderer = RendererCPP(model=datamodels_emw.IrqX19_7())
-    assert "bool is_interrupt;" in renderer.render_cpp_struct()
-    assert "false" in renderer.render_cpp_initializer()
+    assert "uint16_t irq_dropped_counter;" in renderer.render_cpp_struct()
 
 
 def test_irq_x19_7_is_dispatched_and_deserialized() -> None:
@@ -42,6 +41,7 @@ def test_irq_x19_7_is_dispatched_and_deserialized() -> None:
         datamodels_emw.IrqX19_7(
             irq_timestamp_us=123_456_789_012,
             irq_counter=42,
+            irq_dropped_counter=13,
             is_interrupt=True,
         )
     )
@@ -56,5 +56,6 @@ def test_irq_x19_7_is_dispatched_and_deserialized() -> None:
     assert handler.irq_signal == datamodels_emw.IrqX19_7(
         irq_timestamp_us=123_456_789_012,
         irq_counter=42,
+        irq_dropped_counter=13,
         is_interrupt=True,
     )
