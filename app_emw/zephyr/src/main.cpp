@@ -5,10 +5,12 @@
 #include "generated_m7_status_zephyr_struct.hpp"
 #include "generated_m7_status_struct.hpp"
 #include "lib_imu.hpp"
+#include "lib_irq_throttler.hpp"
 #include "lib_rpmsg.hpp"
 #include "messages.hpp"
 #include "messages_to_A53.hpp"
 
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
@@ -39,6 +41,59 @@ int echo(rpmsg::Endpoint &endpoint_cmd, const void *data, std::size_t size,
 }
 
 rpmsg::Endpoint endpoint_cmd{"rpmsg-emw-CMD", echo};
+
+// See lib_irq_throttler_AGENT.md: poll_rate_s is M7_STATUS_INTERVAL_MS.
+IrqThrottler irq_throttler_timing_trig{
+    endpoint_cmd,
+    {
+        .irq_min_interval_s = 0.5,
+        .livesign_min_delay_s = 5.0,
+        .message_id = commands::MSG_ID_M7_to_A53::IRQ_X19_7,
+    }};
+
+// The IrqX19_7 interrupt input at X19-7(SODIMM_22), see
+// prj_verdin_imx8mp.overlay.
+const gpio_dt_spec irq_x19_7_input =
+    GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), irq_x19_7_gpios);
+
+gpio_callback irq_x19_7_callback;
+
+void irq_x19_7_isr(const struct device *, struct gpio_callback *, uint32_t) {
+    irq_throttler_timing_trig.irq();
+}
+
+int irq_x19_7_init() {
+    if (!device_is_ready(irq_x19_7_input.port)) {
+        LOG_ERR("IrqX19_7 GPIO device is not ready");
+        return -ENODEV;
+    }
+
+    int result = gpio_pin_configure_dt(&irq_x19_7_input, GPIO_INPUT);
+    if (result != 0) {
+        LOG_ERR("IrqX19_7 GPIO configure failed: %d", result);
+        return result;
+    }
+
+    // Triggered on the positive edge.
+    result =
+        gpio_pin_interrupt_configure_dt(&irq_x19_7_input, GPIO_INT_EDGE_RISING);
+    if (result != 0) {
+        LOG_ERR("IrqX19_7 interrupt configure failed: %d", result);
+        return result;
+    }
+
+    gpio_init_callback(&irq_x19_7_callback, irq_x19_7_isr,
+                       BIT(irq_x19_7_input.pin));
+    result = gpio_add_callback(irq_x19_7_input.port, &irq_x19_7_callback);
+    if (result != 0) {
+        LOG_ERR("IrqX19_7 add callback failed: %d", result);
+        return result;
+    }
+
+    LOG_INF("IrqX19_7 ready (port=%s pin=%d)", irq_x19_7_input.port->name,
+            irq_x19_7_input.pin);
+    return 0;
+}
 
 void rpmsg_manager(void *, void *, void *) {
     if (transport.initialize() != 0) {
@@ -92,6 +147,7 @@ void m7_status_runner(void *, void *, void *) {
         // Sleep first to stay out of the Linux ping-pong on this channel.
         k_sleep(K_MSEC(M7_STATUS_INTERVAL_MS));
         send_m7_status();
+        irq_throttler_timing_trig.poll();
     }
 }
 
@@ -125,6 +181,11 @@ int main(void) {
 
     k_thread_start(imu_thread);
     k_thread_start(m7_status_thread);
+
+    result = irq_x19_7_init();
+    if (result != 0) {
+        LOG_ERR("Could not initialize IrqX19_7: %d", result);
+    }
 
     if (true) {
         k_sleep(K_FOREVER);

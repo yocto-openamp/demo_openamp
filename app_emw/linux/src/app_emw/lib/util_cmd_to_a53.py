@@ -15,7 +15,7 @@ from app_emw.lib.util_cmd import MsgHeader
 class MSG_ID_M7_to_A53(enum.IntEnum):
     STATUS = 1
     IMU_STATUS = 2
-    INTERRUPT_LINE_SENSOR = 3
+    IRQ_X19_7 = 3
 
 
 async def init_cmd(rpmsg_cmd: Rpmsg) -> None:
@@ -106,6 +106,19 @@ class HandlerCmdA53(abc.ABC):
 
                 self.handle_m7_status(m7_status=m7_status)
 
+            case MSG_ID_M7_to_A53.IRQ_X19_7:
+                renderer = RendererCPP(model=datamodels_emw.IrqX19_7())
+                signal_size = ctypes.sizeof(renderer.ctypes_model)
+                if len(payload_cmd) != signal_size:
+                    raise RuntimeError(
+                        f"Unexpected IrqX19_7 signal size {len(payload_cmd)}"
+                    )
+
+                irq_signal = renderer.deserialize_from_cpp(payload_cmd)
+                assert isinstance(irq_signal, datamodels_emw.IrqX19_7)
+
+                self.handle_irq_x19_7(irq_signal=irq_signal)
+
             case _:
                 raise RuntimeError(f"Unexpected message id {header.msg_id}")
 
@@ -114,6 +127,9 @@ class HandlerCmdA53(abc.ABC):
 
     @abc.abstractmethod
     def handle_m7_status(self, m7_status: datamodels_emw.ModelM7Status) -> None: ...
+
+    @abc.abstractmethod
+    def handle_irq_x19_7(self, irq_signal: datamodels_emw.IrqX19_7) -> None: ...
 
 
 class HandlerCmdA53Console(HandlerCmdA53):
@@ -142,6 +158,20 @@ class HandlerCmdA53Console(HandlerCmdA53):
                 f" tx_last_err={channel.tx_last_err}"
                 f" rx_ok={channel.rx_ok}"
             )
+
+    @typing.override
+    def handle_irq_x19_7(self, irq_signal: datamodels_emw.IrqX19_7) -> None:
+        self.print_irq(irq_signal=irq_signal)
+
+    @staticmethod
+    def print_irq(irq_signal: datamodels_emw.IrqX19_7) -> None:
+        assert isinstance(irq_signal, datamodels_emw.IrqX19_7)
+        signal_type = "interrupt" if irq_signal.is_interrupt else "livesign"
+        print(
+            f"IrqX19_7 {signal_type}:"
+            f" irq_timestamp_us={irq_signal.irq_timestamp_us}"
+            f" irq_counter={irq_signal.irq_counter}"
+        )
 
     @staticmethod
     def print(imu_status: datamodels_emw.ModelImuStatus) -> None:

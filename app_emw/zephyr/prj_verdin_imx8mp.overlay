@@ -15,6 +15,12 @@ hmp_mcuxpresso-zephyr/zephyr/samples/subsys/ipc/openamp_rsc_table/boards/imx8mp_
 		zephyr,console = &uart4;
     };
 
+    zephyr,user {
+        /* The IrqX19_7 interrupt input at X19-7(SODIMM_22) = GPIO5_IO04.
+         * The SPDIF_RX pad is muxed to GPIO by the gpio5 pinmux array. */
+        irq-x19-7-gpios = <&gpio5 4 GPIO_ACTIVE_HIGH>;
+    };
+
     shram: memory@55000000 {
         compatible = "mmio-sram";
         reg = <0x55000000 0x500000>;
