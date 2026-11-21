@@ -138,6 +138,43 @@ class ModelM7Status(pydantic.BaseModel):
     )
 
 
+class IrqX19_7(pydantic.BaseModel):
+    """
+    The 'irq_signal' sent by the IRQ Throttler on the M7.
+    See lib_irq_throttler_AGENT.md.
+    """
+
+    cpp_filename: typing.ClassVar[str] = "irq_x19_7"
+    """
+    Used to name the generated files, e.g. generated_irq_x19_7_struct.hpp
+    """
+
+    model_config = pydantic.ConfigDict(validate_assignment=True)
+
+    irq_timestamp_us: int = pydantic.Field(
+        default=0,
+        json_schema_extra=SchemaExtra(
+            unit="us",
+            comment="The timestamp at which the interrupt occurred",
+            cpp_type="uint64_t",
+        ).dict,
+    )
+    irq_counter: int = pydantic.Field(
+        default=0,
+        json_schema_extra=SchemaExtra(
+            unit="[1]",
+            comment="A counter incremented for each interrupt. It may wrap on overflow",
+            cpp_type="uint16_t",
+        ).dict,
+    )
+    is_interrupt: bool = pydantic.Field(
+        default=False,
+        json_schema_extra=SchemaExtra(
+            comment="true for an interrupt signal and false for a livesign",
+        ).dict,
+    )
+
+
 class ModelImuStatus(pydantic.BaseModel):
     cpp_filename: typing.ClassVar[str] = "imu_status"
     """
@@ -245,6 +282,9 @@ class ModelCommon(pydantic.BaseModel):
 class ModelM7(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(validate_assignment=True)
 
+    irk_X19_7: IrqX19_7 = pydantic.Field(
+        default_factory=lambda: IrqX19_7(),
+    )
     status: ModelM7Status = pydantic.Field(
         default_factory=lambda: ModelM7Status(),
     )
