@@ -18,9 +18,8 @@ reports the counters during a continuous sequence of dropped interrupts.
 
 ### Per-instance configuration
 
-* `irq_min_interval_us` [us]: The minimum interval between consecutive interrupts
-  for an interrupt signal to be forwarded. The previous interrupt counts even
-  if its signal was dropped.
+* `irq_min_interval_us` [us]: The minimum interval between sent interrupt
+  signals. Further interrupts within this interval are counted but dropped.
 * `livesign_min_delay_us` [us]: The minimum time since the last wakeup of the
   sender thread before a livesign is sent.
 * `message_id`: See `messages_to_A53.hpp`
@@ -32,28 +31,30 @@ The `irq_signal` message contains the following fields:
 * `irq_timestamp_us`: The timestamp at which the interrupt occurred.
 * `irq_counter`: A counter incremented for each interrupt. It may wrap on
   overflow.
-* `irq_dropped_counter`: A counter incremented for each interrupt whose signal
-  is dropped by the rate limit. It may wrap on overflow.
+* `irq_dropped_counter`: A counter of the interrupts whose signals were
+  dropped by the rate limit. It may wrap on overflow.
 * `is_interrupt`: `true` for an interrupt signal and `false` for a livesign.
 
 ## Signal generation
 
 ### Interrupt signals
 
-When an interrupt occurs, `irq()` compares the current time with the previous
-`irq_timestamp_us` before updating it. It increments `irq_counter` and updates
-`irq_timestamp_us` for every interrupt, including those whose signals are
-dropped. If less than `irq_min_interval_us` has elapsed since the previous
-interrupt, it increments `irq_dropped_counter` and does not send an interrupt
-signal. Otherwise, it wakes the sender thread, which sends the interrupt
-signal.
+When an interrupt occurs, `irq()` records the current time in
+`irq_timestamp_us`, increments `irq_counter` and wakes the sender thread. All
+policy lives in the sender thread.
 
-`irq_timestamp_us` is initialized to 0. The same interval check applies to
-the first interrupt, using 0 as the previous timestamp.
+The sender thread applies the rate limit: an interrupt signal is sent if at
+least `irq_min_interval_us` has elapsed since the last sent interrupt signal.
+Otherwise the interrupt is dropped and reflected in `irq_dropped_counter`,
+which the sender thread derives as `irq_counter` minus the number of sent
+interrupt signals.
+
+The last-send time is initialized to 0. The same interval check applies to
+the first interrupt, using 0 as the previous send time.
 
 Consequently, a continuous sequence of interrupts spaced closer together than
-`irq_min_interval_us` will not produce further interrupt signals until an
-interrupt follows a sufficiently long gap.
+`irq_min_interval_us` produces one interrupt signal per `irq_min_interval_us`,
+carrying the current counters.
 
 ### Livesign signals
 
@@ -67,8 +68,10 @@ failed send does not shorten the interval until the next livesign.
 A livesign contains the `irq_timestamp_us` of the most recent interrupt and
 the current `irq_counter` and `irq_dropped_counter`, including interrupts
 whose signals were dropped. Before the first interrupt, the livesign contains
-the initial `irq_timestamp_us` value of 0. Dropped interrupts do not postpone
-livesigns.
+the initial `irq_timestamp_us` value of 0. Every interrupt - including a
+dropped one - wakes the sender thread and thereby postpones the next
+livesign; during such a sequence, rate-limited interrupt signals are sent
+instead.
 
 ## Implementation
 
@@ -85,10 +88,8 @@ memory from the heap using `malloc`.
 
 ### Interface
 
-* `irq()`: Called by the interrupt service routine. It checks the interval
-  since the previous interrupt, updates `irq_counter`,
-  `irq_dropped_counter`, and `irq_timestamp_us`, and wakes the sender thread
-  if the interval meets the rate limit.
+* `irq()`: Called by the interrupt service routine. It records
+  `irq_timestamp_us`, increments `irq_counter` and wakes the sender thread.
 
 ### Interrupt and sender-thread concurrency
 
@@ -97,17 +98,18 @@ Each instance owns a dedicated sender thread, the only context that calls
 workqueue is used - `rpmsg_send` may block and is not ISR-safe, so blocking
 the system workqueue would stall unrelated work items.
 
-`irq()` is ISR-safe and non-blocking: it updates the state and gives a
-binary semaphore. Bursts of forwarded interrupts coalesce into a single
+`irq()` is ISR-safe, non-blocking and policy-free: it records the state and
+gives a binary semaphore. Bursts of interrupts coalesce into a single
 wakeup. The sender thread waits on the semaphore with a timeout of
-`livesign_min_delay_us`: taken means an interrupt signal is due, a timeout
-means a livesign is due.
+`livesign_min_delay_us`: taken means an interrupt occurred, a timeout means
+a livesign is due. The rate limit and the dropped-count derivation use only
+thread-local state.
 
 The shared state is handled without locks:
 
-* `irq_counter` and `irq_dropped_counter` are Zephyr `atomic_t`, updated with
-  `atomic_inc` and read with `atomic_get`. They are truncated to `uint16_t`
-  when the message is built, which preserves the wrap semantics.
+* `irq_counter` is a Zephyr `atomic_t`, updated with `atomic_inc` and read
+  with `atomic_get`. The counters are truncated to `uint16_t` when the
+  message is built, which preserves the wrap semantics.
 * `irq_timestamp_us` is 64-bit and written by `irq()` only. The Cortex-M7
   cannot read 64 bits atomically, so the sender thread uses an optimistic
   retry: it clears the `atomic_t` flag `irq_occurred`, copies the timestamp,
@@ -120,6 +122,11 @@ error conditions:
   sender thread, not after the last successful send.
 * The counters in a signal may already include interrupts that arrived after
   the interrupt that triggered the wakeup.
+* Every interrupt wakes the sender thread, even when its signal is then
+  dropped by the rate limit: an interrupt storm costs one thread wakeup per
+  interrupt.
+* A failed send still counts as sent for the rate limit and the dropped
+  count.
 
 ## Integration example
 

@@ -31,18 +31,10 @@ IrqThrottler::IrqThrottler(rpmsg::Endpoint &endpoint, const Config &config)
 }
 
 void IrqThrottler::irq() {
-    const uint64_t now_us = timestamp_us();
-    // 'irq()' is the sole writer of 'irq_timestamp_us_'.
-    // The previous interrupt counts even if its signal was dropped.
-    const bool forward = (now_us - irq_timestamp_us_) >= irq_min_interval_us_;
-    irq_timestamp_us_ = now_us;
+    irq_timestamp_us_ = timestamp_us();
     atomic_set(&irq_occurred_, 1);
     atomic_inc(&irq_counter_);
-    if (forward) {
-        k_sem_give(&sem_);
-    } else {
-        atomic_inc(&irq_dropped_counter_);
-    }
+    k_sem_give(&sem_);
 }
 
 void IrqThrottler::thread_entry(void *self, void *, void *) {
@@ -50,11 +42,26 @@ void IrqThrottler::thread_entry(void *self, void *, void *) {
 }
 
 void IrqThrottler::run() {
+    // [us] When the last interrupt signal was sent: the rate limit. The
+    // check also applies to the first interrupt, using the initial 0.
+    uint64_t last_interrupt_send_us = 0;
+    // The number of interrupt signals sent: derives the dropped count.
+    uint32_t interrupt_send_count = 0;
+
     while (true) {
-        // Taken: an interrupt signal is due. Timeout: a livesign is due.
+        // Taken: an interrupt occurred. Timeout: a livesign is due.
         const bool is_interrupt =
             k_sem_take(&sem_, K_USEC(livesign_min_delay_us_)) == 0;
-        send_signal(is_interrupt);
+        if (is_interrupt) {
+            const uint64_t now_us = timestamp_us();
+            if (now_us - last_interrupt_send_us < irq_min_interval_us_) {
+                // Rate limit: drop this interrupt signal.
+                continue;
+            }
+            last_interrupt_send_us = now_us;
+            interrupt_send_count++;
+        }
+        send_signal(is_interrupt, interrupt_send_count);
     }
 }
 
@@ -69,7 +76,8 @@ uint64_t IrqThrottler::read_irq_timestamp_us() {
     return snapshot_us;
 }
 
-void IrqThrottler::send_signal(const bool is_interrupt) {
+void IrqThrottler::send_signal(const bool is_interrupt,
+                               const uint32_t interrupt_send_count) {
     // Sent 1:1 over RPMsg: the msg_header followed by the irq_signal.
     struct __attribute__((packed)) {
         commands::msg_header header;
@@ -78,9 +86,12 @@ void IrqThrottler::send_signal(const bool is_interrupt) {
     msg.header.msg_id = static_cast<int16_t>(message_id_);
     msg.header.msg_size = sizeof(msg);
     msg.signal.irq_timestamp_us = read_irq_timestamp_us();
-    msg.signal.irq_counter = static_cast<uint16_t>(atomic_get(&irq_counter_));
+    const uint32_t irq_counter =
+        static_cast<uint32_t>(atomic_get(&irq_counter_));
+    msg.signal.irq_counter = static_cast<uint16_t>(irq_counter);
+    // Dropped: every interrupt that did not result in a sent signal.
     msg.signal.irq_dropped_counter =
-        static_cast<uint16_t>(atomic_get(&irq_dropped_counter_));
+        static_cast<uint16_t>(irq_counter - interrupt_send_count);
     msg.signal.is_interrupt = is_interrupt;
 
     const int result = endpoint_->send(&msg, sizeof(msg));

@@ -15,9 +15,8 @@
 class IrqThrottler {
   public:
     struct Config {
-        // [us] The minimum interval between consecutive interrupts for an
-        // interrupt signal to be forwarded. The previous interrupt counts
-        // even if its signal was dropped.
+        // [us] The minimum interval between sent interrupt signals. Further
+        // interrupts within this interval are counted but dropped.
         uint64_t irq_min_interval_us;
         // [us] The minimum time since the last wakeup of the sender thread
         // before a livesign is sent.
@@ -31,15 +30,16 @@ class IrqThrottler {
     IrqThrottler(const IrqThrottler &) = delete;
     IrqThrottler &operator=(const IrqThrottler &) = delete;
 
-    // Called by the interrupt service routine: Updates the interrupt counters
-    // and 'irq_timestamp_us_' and, if the rate limit is met, wakes the sender
+    // Called by the interrupt service routine: Records 'irq_timestamp_us_',
+    // increments the interrupt counter and wakes the sender thread. All
+    // policy (rate limit, livesign, drop accounting) lives in the sender
     // thread ('rpmsg_send' may block and is not ISR-safe).
     void irq();
 
   private:
     static void thread_entry(void *self, void *, void *);
     void run();
-    void send_signal(bool is_interrupt);
+    void send_signal(bool is_interrupt, uint32_t interrupt_send_count);
     uint64_t read_irq_timestamp_us();
 
     rpmsg::Endpoint *endpoint_;
@@ -56,7 +56,6 @@ class IrqThrottler {
     uint64_t irq_timestamp_us_{0};
     atomic_t irq_occurred_{ATOMIC_INIT(0)};
     atomic_t irq_counter_{ATOMIC_INIT(0)};
-    atomic_t irq_dropped_counter_{ATOMIC_INIT(0)};
 
     // The sender thread: the only context calling 'rpmsg_send'.
     struct k_thread thread_;
