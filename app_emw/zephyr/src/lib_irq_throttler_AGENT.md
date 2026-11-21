@@ -16,17 +16,13 @@ reports the counters during a continuous sequence of dropped interrupts.
 
 ## Configuration
 
-### Global configuration
-
-* `poll_rate_s` [s]: The interval at which the main loop calls `poll()`. This will trigger livesigns.
-
 ### Per-instance configuration
 
 * `irq_min_interval_us` [us]: The minimum interval between consecutive interrupts
   for an interrupt signal to be forwarded. The previous interrupt counts even
   if its signal was dropped.
-* `livesign_min_delay_us` [us]: The minimum time since the last signal was sent
-  before a livesign is sent.
+* `livesign_min_delay_us` [us]: The minimum time since the last wakeup of the
+  sender thread before a livesign is sent.
 * `message_id`: See `messages_to_A53.hpp`
 
 ## Signal format
@@ -49,7 +45,8 @@ When an interrupt occurs, `irq()` compares the current time with the previous
 `irq_timestamp_us` for every interrupt, including those whose signals are
 dropped. If less than `irq_min_interval_us` has elapsed since the previous
 interrupt, it increments `irq_dropped_counter` and does not send an interrupt
-signal. Otherwise, it sends the interrupt signal.
+signal. Otherwise, it wakes the sender thread, which sends the interrupt
+signal.
 
 `irq_timestamp_us` is initialized to 0. The same interval check applies to
 the first interrupt, using 0 as the previous timestamp.
@@ -60,15 +57,12 @@ interrupt follows a sufficiently long gap.
 
 ### Livesign signals
 
-The main loop calls `poll()` at the `poll_rate_s` interval. A livesign is sent
-if at least `livesign_min_delay_us` has elapsed since the last signal was sent,
-as recorded in `signal_timestamp_us`. Livesign signals have
-`is_interrupt=false`.
-
-`signal_timestamp_us` is internal state initialized to 0 and is updated to the
-current timestamp whenever an interrupt signal or livesign is successfully
-sent. A dropped interrupt or failed send does not update it. Before the first
-signal is sent, the same delay check uses the initial value of 0.
+The sender thread waits on its semaphore with a timeout of
+`livesign_min_delay_us`. When the timeout expires - no interrupt signal woke
+the thread for at least `livesign_min_delay_us` - a livesign is sent.
+Livesign signals have `is_interrupt=false`. No separate timestamp
+bookkeeping is kept: the semaphore wait itself measures the delay, so a
+failed send does not shorten the interval until the next livesign.
 
 A livesign contains the `irq_timestamp_us` of the most recent interrupt and
 the current `irq_counter` and `irq_dropped_counter`, including interrupts
@@ -91,25 +85,41 @@ memory from the heap using `malloc`.
 
 ### Interface
 
-* `poll()`: Called from `main()` at the configured `poll_rate_s` interval.
-  It checks the time since the last signal and sends a livesign when due.
 * `irq()`: Called by the interrupt service routine. It checks the interval
   since the previous interrupt, updates `irq_counter`,
-  `irq_dropped_counter`, and `irq_timestamp_us`, and sends a signal if the
-  interval meets the rate limit.
+  `irq_dropped_counter`, and `irq_timestamp_us`, and wakes the sender thread
+  if the interval meets the rate limit.
 
-### Interrupt and main-loop concurrency
+### Interrupt and sender-thread concurrency
 
-`poll()` can be interrupted by `irq()`. The implementation must protect shared
-state using Zephyr primitives that are safe in both contexts. In particular,
-`poll()` must read a consistent snapshot of `signal_timestamp_us`,
-`irq_timestamp_us`, `irq_counter`, and `irq_dropped_counter`, including when
-timestamps cannot be read atomically on their own. Updates to
-`signal_timestamp_us` must also be protected against concurrent access.
+Each instance owns a dedicated sender thread, the only context that calls
+`rpmsg_send`. Sends are therefore serialized without a mutex, and no
+workqueue is used - `rpmsg_send` may block and is not ISR-safe, so blocking
+the system workqueue would stall unrelated work items.
 
-Signal delivery from `irq()` must use an ISR-safe, non-blocking mechanism. If
-the delivery mechanism is not ISR-safe, delivery must be deferred to a thread.
-Do not hold a critical section across a potentially blocking send.
+`irq()` is ISR-safe and non-blocking: it updates the state and gives a
+binary semaphore. Bursts of forwarded interrupts coalesce into a single
+wakeup. The sender thread waits on the semaphore with a timeout of
+`livesign_min_delay_us`: taken means an interrupt signal is due, a timeout
+means a livesign is due.
+
+The shared state is handled without locks:
+
+* `irq_counter` and `irq_dropped_counter` are Zephyr `atomic_t`, updated with
+  `atomic_inc` and read with `atomic_get`. They are truncated to `uint16_t`
+  when the message is built, which preserves the wrap semantics.
+* `irq_timestamp_us` is 64-bit and written by `irq()` only. The Cortex-M7
+  cannot read 64 bits atomically, so the sender thread uses an optimistic
+  retry: it clears the `atomic_t` flag `irq_occurred`, copies the timestamp,
+  and retries if the flag was set by an interrupt during the copy.
+
+Accepted simplifications - these deviations only matter in rare burst or
+error conditions:
+
+* A livesign is due `livesign_min_delay_us` after the last wakeup of the
+  sender thread, not after the last successful send.
+* The counters in a signal may already include interrupts that arrived after
+  the interrupt that triggered the wakeup.
 
 ## Integration example
 
@@ -133,20 +143,6 @@ gpioset --toggle=1000 SODIMM_20=1
 ```
 
 Use X19-6(SODIMM_20) to test the new class!
-
-### Polling in `main.cpp`
-
-The current `poll_rate_s` is based on the existing
-`M7_STATUS_INTERVAL_MS(main.cpp)` constant:
-
-```C++
-    while (true) {
-        // Sleep first to stay out of the Linux ping-pong on this channel.
-        k_sleep(K_MSEC(M7_STATUS_INTERVAL_MS));
-        send_m7_status();
-        irq_throttler_timing_trig.poll();
-    }
-```
 
 ### Signal data model
 

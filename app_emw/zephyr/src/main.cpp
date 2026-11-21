@@ -42,7 +42,7 @@ int echo(rpmsg::Endpoint &endpoint_cmd, const void *data, std::size_t size,
 
 rpmsg::Endpoint endpoint_cmd{"rpmsg-emw-CMD", echo};
 
-// See lib_irq_throttler_AGENT.md: poll_rate_s is M7_STATUS_INTERVAL_MS.
+// See lib_irq_throttler_AGENT.md.
 IrqThrottler irq_throttler_timing_trig{
     endpoint_cmd,
     {
@@ -147,7 +147,6 @@ void m7_status_runner(void *, void *, void *) {
         // Sleep first to stay out of the Linux ping-pong on this channel.
         k_sleep(K_MSEC(M7_STATUS_INTERVAL_MS));
         send_m7_status();
-        irq_throttler_timing_trig.poll();
     }
 }
 

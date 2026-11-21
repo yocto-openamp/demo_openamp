@@ -5,7 +5,7 @@
 #include "messages_to_A53.hpp"
 
 #include <zephyr/kernel.h>
-#include <zephyr/spinlock.h>
+#include <zephyr/sys/atomic.h>
 
 #include <cstdint>
 
@@ -19,8 +19,8 @@ class IrqThrottler {
         // interrupt signal to be forwarded. The previous interrupt counts
         // even if its signal was dropped.
         uint64_t irq_min_interval_us;
-        // [us] The minimum time since the last signal before a livesign
-        // is sent.
+        // [us] The minimum time since the last wakeup of the sender thread
+        // before a livesign is sent.
         uint64_t livesign_min_delay_us;
         // See messages_to_A53.hpp.
         commands::MSG_ID_M7_to_A53 message_id;
@@ -32,34 +32,33 @@ class IrqThrottler {
     IrqThrottler &operator=(const IrqThrottler &) = delete;
 
     // Called by the interrupt service routine: Updates the interrupt counters
-    // and 'irq_timestamp_us' and, if the rate limit is met, defers the
-    // interrupt signal to the system workqueue ('rpmsg_send' may block and is
-    // not ISR-safe).
+    // and 'irq_timestamp_us_' and, if the rate limit is met, wakes the sender
+    // thread ('rpmsg_send' may block and is not ISR-safe).
     void irq();
 
-    // Called from main() at the 'poll_rate_s' interval: Sends a livesign if
-    // no signal was sent for at least 'livesign_min_delay_us'.
-    void poll();
-
   private:
-    static void work_handler(struct k_work *work);
-    void send_signal(const IrqX19_7_t &signal);
+    static void thread_entry(void *self, void *, void *);
+    void run();
+    void send_signal(bool is_interrupt);
+    uint64_t read_irq_timestamp_us();
 
     rpmsg::Endpoint *endpoint_;
     uint64_t irq_min_interval_us_;
     uint64_t livesign_min_delay_us_;
     commands::MSG_ID_M7_to_A53 message_id_;
 
-    struct k_work work_;
-    // Serializes sends with the livesign due check, without blocking IRQs.
-    struct k_mutex send_mutex_;
-    // Protects the state shared between irq(), poll() and work_handler():
-    // Safe in both ISR and thread context.
-    struct k_spinlock lock_{};
+    // Binary semaphore: irq() wakes the sender thread, bursts coalesce into
+    // a single signal. A timeout while waiting triggers a livesign.
+    struct k_sem sem_;
+    // Written by irq() (ISR context) only. The sender thread reads it with an
+    // optimistic retry guarded by 'irq_occurred_': the 64-bit read may tear
+    // when an interrupt updates it mid-copy.
     uint64_t irq_timestamp_us_{0};
-    uint64_t signal_timestamp_us_{0};
-    uint16_t irq_counter_{0};
-    uint16_t irq_dropped_counter_{0};
-    // The interrupt signal pending in the system workqueue.
-    IrqX19_7_t pending_{};
+    atomic_t irq_occurred_{ATOMIC_INIT(0)};
+    atomic_t irq_counter_{ATOMIC_INIT(0)};
+    atomic_t irq_dropped_counter_{ATOMIC_INIT(0)};
+
+    // The sender thread: the only context calling 'rpmsg_send'.
+    struct k_thread thread_;
+    K_KERNEL_STACK_MEMBER(stack_, 2048);
 };
