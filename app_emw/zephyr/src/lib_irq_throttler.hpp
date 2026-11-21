@@ -15,13 +15,13 @@
 class IrqThrottler {
   public:
     struct Config {
-        // [s] The minimum interval between consecutive interrupts for an
+        // [us] The minimum interval between consecutive interrupts for an
         // interrupt signal to be forwarded. The previous interrupt counts
         // even if its signal was dropped.
-        double irq_min_interval_s;
-        // [s] The minimum time since the last interrupt before a livesign
+        uint64_t irq_min_interval_us;
+        // [us] The minimum time since the last interrupt before a livesign
         // is sent.
-        double livesign_min_delay_s;
+        uint64_t livesign_min_delay_us;
         // See messages_to_A53.hpp.
         commands::MSG_ID_M7_to_A53 message_id;
     };
@@ -38,7 +38,7 @@ class IrqThrottler {
     void irq();
 
     // Called from main() at the 'poll_rate_s' interval: Sends a livesign if
-    // no interrupt occurred for at least 'livesign_min_delay_s'.
+    // no interrupt occurred for at least 'livesign_min_delay_us'.
     void poll();
 
   private:

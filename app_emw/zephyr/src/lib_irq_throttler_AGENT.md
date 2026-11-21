@@ -22,10 +22,10 @@ active.
 
 ### Per-instance configuration
 
-* `irq_min_interval_s` [s]: The minimum interval between consecutive interrupts
+* `irq_min_interval_us` [us]: The minimum interval between consecutive interrupts
   for an interrupt signal to be forwarded. The previous interrupt counts even
   if its signal was dropped.
-* `livesign_min_delay_s` [s]: The minimum time since the last interrupt before
+* `livesign_min_delay_us` [us]: The minimum time since the last interrupt before
   a livesign is sent.
 * `message_id`: See `messages_to_A53.hpp`
 
@@ -47,7 +47,7 @@ The `irq_signal` message contains the following fields:
 When an interrupt occurs, `irq()` compares the current time with the previous
 `irq_timestamp_us` before updating it. It increments `irq_counter` and updates
 `irq_timestamp_us` for every interrupt, including those whose signals are
-dropped. If less than `irq_min_interval_s` has elapsed since the previous
+dropped. If less than `irq_min_interval_us` has elapsed since the previous
 interrupt, it increments `irq_dropped_counter` and does not send an interrupt
 signal. Otherwise, it sends the interrupt signal.
 
@@ -55,13 +55,13 @@ signal. Otherwise, it sends the interrupt signal.
 the first interrupt, using 0 as the previous timestamp.
 
 Consequently, a continuous sequence of interrupts spaced closer together than
-`irq_min_interval_s` will not produce further interrupt signals until an
+`irq_min_interval_us` will not produce further interrupt signals until an
 interrupt follows a sufficiently long gap.
 
 ### Livesign signals
 
 The main loop calls `poll()` at the `poll_rate_s` interval. A livesign is sent
-if at least `livesign_min_delay_s` has elapsed since the last interrupt, as
+if at least `livesign_min_delay_us` has elapsed since the last interrupt, as
 recorded in `irq_timestamp_us`, including an interrupt whose signal was
 dropped. Livesign signals have `is_interrupt=false`.
 

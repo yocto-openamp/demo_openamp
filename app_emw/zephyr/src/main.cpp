@@ -46,8 +46,8 @@ rpmsg::Endpoint endpoint_cmd{"rpmsg-emw-CMD", echo};
 IrqThrottler irq_throttler_timing_trig{
     endpoint_cmd,
     {
-        .irq_min_interval_s = 0.5,
-        .livesign_min_delay_s = 5.0,
+        .irq_min_interval_us = 500000,
+        .livesign_min_delay_us = 5000000,
         .message_id = commands::MSG_ID_M7_to_A53::IRQ_X19_7,
     }};
 

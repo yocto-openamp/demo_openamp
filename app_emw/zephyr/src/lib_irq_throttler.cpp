@@ -13,16 +13,12 @@ namespace {
 
 uint64_t timestamp_us() { return k_cyc_to_us_near64(k_cycle_get_64()); }
 
-uint64_t seconds_to_us(double seconds) {
-    return static_cast<uint64_t>(seconds * 1e6);
-}
-
 } // namespace
 
 IrqThrottler::IrqThrottler(rpmsg::Endpoint &endpoint, const Config &config)
     : endpoint_(&endpoint),
-      irq_min_interval_us_(seconds_to_us(config.irq_min_interval_s)),
-      livesign_min_delay_us_(seconds_to_us(config.livesign_min_delay_s)),
+      irq_min_interval_us_(config.irq_min_interval_us),
+      livesign_min_delay_us_(config.livesign_min_delay_us),
       message_id_(config.message_id) {
     k_work_init(&work_, work_handler);
 }
