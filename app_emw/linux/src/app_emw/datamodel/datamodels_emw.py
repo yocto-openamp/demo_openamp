@@ -140,7 +140,7 @@ class ModelM7Status(pydantic.BaseModel):
 
 class ModelIrqX19_7(pydantic.BaseModel):
     """
-    The 'irq_signal' sent by the IRQ Throttler on the M7.
+    The message sent by the IRQ Throttler on the M7.
     See lib_irq_throttler_AGENT.md.
     """
 
@@ -172,7 +172,7 @@ class ModelIrqX19_7(pydantic.BaseModel):
         json_schema_extra=SchemaExtra(
             unit="[1]",
             comment=(
-                "A counter incremented for each interrupt whose signal is dropped "
+                "A counter incremented for each interrupt whose message is dropped "
                 "by the rate limit. It may wrap on overflow"
             ),
             cpp_type="uint16_t",
@@ -181,7 +181,7 @@ class ModelIrqX19_7(pydantic.BaseModel):
     is_interrupt: bool = pydantic.Field(
         default=False,
         json_schema_extra=SchemaExtra(
-            comment="true for an interrupt signal and false for a livesign",
+            comment="true for an interrupt message and false for a livesign",
         ).dict,
     )
 

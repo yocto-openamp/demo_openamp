@@ -11,7 +11,7 @@ async def app_emw(
     observer: util_observer.Observer | None = None,
 ) -> None:
     """
-    The EMW application just handling the rpmsg signals.
+    The EMW application just handling the rpmsg messages.
     Without GUI, observer, etc!
     """
     filenump_imu = util_imu_to_a53.FiledumpImu(

@@ -9,13 +9,13 @@
 
 #include <cstdint>
 
-// Forwards interrupt signals with minimal delay while limiting their rate.
-// When signals are absent, periodic livesigns are sent instead.
+// Forwards interrupt messages with minimal delay while limiting their rate.
+// When messages are absent, periodic livesigns are sent instead.
 // See lib_irq_throttler_AGENT.md.
 class IrqThrottler {
   public:
     struct Config {
-        // [us] The minimum interval between sent interrupt signals. Further
+        // [us] The minimum interval between sent interrupt messages. Further
         // interrupts within this interval are counted but dropped.
         uint64_t irq_min_interval_us;
         // [us] The minimum time since the last wakeup of the sender thread
@@ -39,7 +39,7 @@ class IrqThrottler {
   private:
     static void thread_entry(void *self, void *, void *);
     void run();
-    void send_signal(bool is_interrupt, uint32_t interrupt_send_count);
+    void send_message(bool is_interrupt, uint32_t interrupt_send_count);
     uint64_t read_irq_timestamp_us();
 
     rpmsg::Endpoint *endpoint_;
@@ -48,7 +48,7 @@ class IrqThrottler {
     commands::MSG_ID_M7_to_A53 message_id_;
 
     // Binary semaphore: irq() wakes the sender thread, bursts coalesce into
-    // a single signal. A timeout while waiting triggers a livesign.
+    // a single message. A timeout while waiting triggers a livesign.
     struct k_sem sem_;
     // Written by irq() (ISR context) only. The sender thread reads it with an
     // optimistic retry guarded by 'irq_occurred_': the 64-bit read may tear

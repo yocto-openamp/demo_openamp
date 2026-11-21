@@ -108,16 +108,16 @@ class HandlerCmdA53(abc.ABC):
 
             case MSG_ID_M7_to_A53.IRQ_X19_7:
                 renderer = RendererCPP(model=datamodels_emw.ModelIrqX19_7())
-                signal_size = ctypes.sizeof(renderer.ctypes_model)
-                if len(payload_cmd) != signal_size:
+                message_size = ctypes.sizeof(renderer.ctypes_model)
+                if len(payload_cmd) != message_size:
                     raise RuntimeError(
-                        f"Unexpected IrqX19_7 signal size {len(payload_cmd)}"
+                        f"Unexpected IrqX19_7 message size {len(payload_cmd)}"
                     )
 
-                irq_signal = renderer.deserialize_from_cpp(payload_cmd)
-                assert isinstance(irq_signal, datamodels_emw.ModelIrqX19_7)
+                irq_x19_7 = renderer.deserialize_from_cpp(payload_cmd)
+                assert isinstance(irq_x19_7, datamodels_emw.ModelIrqX19_7)
 
-                self.handle_irq_x19_7(irq_signal=irq_signal)
+                self.handle_irq_x19_7(irq_x19_7=irq_x19_7)
 
             case _:
                 raise RuntimeError(f"Unexpected message id {header.msg_id}")
@@ -129,7 +129,7 @@ class HandlerCmdA53(abc.ABC):
     def handle_m7_status(self, m7_status: datamodels_emw.ModelM7Status) -> None: ...
 
     @abc.abstractmethod
-    def handle_irq_x19_7(self, irq_signal: datamodels_emw.ModelIrqX19_7) -> None: ...
+    def handle_irq_x19_7(self, irq_x19_7: datamodels_emw.ModelIrqX19_7) -> None: ...
 
 
 class HandlerCmdA53Console(HandlerCmdA53):
@@ -160,18 +160,18 @@ class HandlerCmdA53Console(HandlerCmdA53):
             )
 
     @typing.override
-    def handle_irq_x19_7(self, irq_signal: datamodels_emw.ModelIrqX19_7) -> None:
-        self.print_irq(irq_signal=irq_signal)
+    def handle_irq_x19_7(self, irq_x19_7: datamodels_emw.ModelIrqX19_7) -> None:
+        self.print_irq(irq_x19_7=irq_x19_7)
 
     @staticmethod
-    def print_irq(irq_signal: datamodels_emw.ModelIrqX19_7) -> None:
-        assert isinstance(irq_signal, datamodels_emw.ModelIrqX19_7)
-        signal_type = "interrupt" if irq_signal.is_interrupt else "livesign"
+    def print_irq(irq_x19_7: datamodels_emw.ModelIrqX19_7) -> None:
+        assert isinstance(irq_x19_7, datamodels_emw.ModelIrqX19_7)
+        message_type = "interrupt" if irq_x19_7.is_interrupt else "livesign"
         print(
-            f"IrqX19_7 {signal_type}:"
-            f" irq_timestamp_us={irq_signal.irq_timestamp_us}"
-            f" irq_counter={irq_signal.irq_counter}"
-            f" irq_dropped_counter={irq_signal.irq_dropped_counter}"
+            f"IrqX19_7 {message_type}:"
+            f" irq_timestamp_us={irq_x19_7.irq_timestamp_us}"
+            f" irq_counter={irq_x19_7.irq_counter}"
+            f" irq_dropped_counter={irq_x19_7.irq_dropped_counter}"
         )
 
     @staticmethod

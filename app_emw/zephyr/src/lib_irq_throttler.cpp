@@ -11,7 +11,7 @@ LOG_MODULE_REGISTER(lib_irq_throttler);
 
 namespace {
 
-// Above the main-loop threads so interrupt signals go out with low latency.
+// Above the main-loop threads so interrupt messages go out with low latency.
 constexpr int THREAD_PRIORITY = K_PRIO_PREEMPT(0);
 
 uint64_t timestamp_us() { return k_cyc_to_us_near64(k_cycle_get_64()); }
@@ -42,10 +42,10 @@ void IrqThrottler::thread_entry(void *self, void *, void *) {
 }
 
 void IrqThrottler::run() {
-    // [us] When the last interrupt signal was sent: the rate limit. The
+    // [us] When the last interrupt message was sent: the rate limit. The
     // check also applies to the first interrupt, using the initial 0.
     uint64_t last_interrupt_send_us = 0;
-    // The number of interrupt signals sent: derives the dropped count.
+    // The number of interrupt messages sent: derives the dropped count.
     uint32_t interrupt_send_count = 0;
 
     while (true) {
@@ -55,13 +55,13 @@ void IrqThrottler::run() {
         if (is_interrupt) {
             const uint64_t now_us = timestamp_us();
             if (now_us - last_interrupt_send_us < irq_min_interval_us_) {
-                // Rate limit: drop this interrupt signal.
+                // Rate limit: drop this interrupt message.
                 continue;
             }
             last_interrupt_send_us = now_us;
             interrupt_send_count++;
         }
-        send_signal(is_interrupt, interrupt_send_count);
+        send_message(is_interrupt, interrupt_send_count);
     }
 }
 
@@ -76,29 +76,30 @@ uint64_t IrqThrottler::read_irq_timestamp_us() {
     return snapshot_us;
 }
 
-void IrqThrottler::send_signal(const bool is_interrupt,
-                               const uint32_t interrupt_send_count) {
-    // Sent 1:1 over RPMsg: the msg_header followed by the irq_signal.
+void IrqThrottler::send_message(const bool is_interrupt,
+                                const uint32_t interrupt_send_count) {
+    // Sent 1:1 over RPMsg: the msg_header followed by the generated
+    // ModelIrqX19_7_t.
     struct __attribute__((packed)) {
         commands::msg_header header;
-        ModelIrqX19_7_t signal;
+        ModelIrqX19_7_t irq_x19_7;
     } msg = {};
     msg.header.msg_id = static_cast<int16_t>(message_id_);
     msg.header.msg_size = sizeof(msg);
-    msg.signal.irq_timestamp_us = read_irq_timestamp_us();
+    msg.irq_x19_7.irq_timestamp_us = read_irq_timestamp_us();
     const uint32_t irq_counter =
         static_cast<uint32_t>(atomic_get(&irq_counter_));
-    msg.signal.irq_counter = static_cast<uint16_t>(irq_counter);
-    // Dropped: every interrupt that did not result in a sent signal.
-    msg.signal.irq_dropped_counter =
+    msg.irq_x19_7.irq_counter = static_cast<uint16_t>(irq_counter);
+    // Dropped: every interrupt that did not result in a sent message.
+    msg.irq_x19_7.irq_dropped_counter =
         static_cast<uint16_t>(irq_counter - interrupt_send_count);
-    msg.signal.is_interrupt = is_interrupt;
+    msg.irq_x19_7.is_interrupt = is_interrupt;
 
     const int result = endpoint_->send(&msg, sizeof(msg));
     if (result < 0) {
-        LOG_WRN("Could not send irq signal: %d", result);
+        LOG_WRN("Could not send irq message: %d", result);
     } else if (static_cast<std::size_t>(result) != sizeof(msg)) {
-        LOG_WRN("Incomplete irq signal: %d of %u bytes", result,
+        LOG_WRN("Incomplete irq message: %d of %u bytes", result,
                 static_cast<unsigned int>(sizeof(msg)));
     }
 }
